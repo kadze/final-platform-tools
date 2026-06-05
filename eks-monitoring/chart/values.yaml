@@ -1,0 +1,208 @@
+# =============================================================================
+# eks-monitoring/chart/values.yaml
+# Shared defaults — overridden by values-dev/staging/prod.yaml
+# Owner: teammate6 (MRP25CUBUN-6)
+# =============================================================================
+
+# Team identifier — used in Grafana hostname and labels
+team: ubuntu
+
+# Namespace where the stack is deployed
+namespace: monitoring
+
+# ---------------------------------------------------------------------------
+# kube-prometheus-stack subchart values
+# ---------------------------------------------------------------------------
+kube-prometheus-stack:
+
+  # -------------------------------------------------------------------------
+  # Prometheus
+  # -------------------------------------------------------------------------
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      # Scrape interval — how often Prometheus pulls metrics
+      scrapeInterval: 30s
+      evaluationInterval: 30s
+
+      # Retention — how long metrics are kept
+      retention: 15d
+
+      # Storage
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 20Gi
+
+      # Allow Prometheus to pick up ServiceMonitors from any namespace
+      serviceMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorNamespaceSelector: {}
+      serviceMonitorSelector: {}
+
+      # Labels added to all scraped metrics
+      externalLabels:
+        cluster: temporary-eks-cluster-dev
+        team: ubuntu
+        environment: dev
+
+      # Additional scrape configs for apps that don't use ServiceMonitors
+      additionalScrapeConfigs: []
+
+  # -------------------------------------------------------------------------
+  # Grafana
+  # -------------------------------------------------------------------------
+  grafana:
+    enabled: true
+
+    # Admin credentials sourced from AWS Secrets Manager via environment variable
+    # The actual secret is created manually in AWS Secrets Manager:
+    # Secret name: monitoring/grafana-admin
+    # The CSI driver (story 1.5) will inject it cleanly later
+    admin:
+      existingSecret: grafana-admin-secret
+      userKey: admin-user
+      passwordKey: admin-password
+
+    # Grafana hostname — overridden per environment in values-dev/staging/prod.yaml
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/whitelist-source-range: "0.0.0.0/0"  # overridden per env
+      hosts: []  # set per environment
+      tls: []    # set per environment
+
+    # Grafana plugins
+    plugins:
+      - grafana-clock-panel
+
+    # Data sources — Prometheus (cluster) + CloudWatch (AWS-managed resources)
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+          - name: Prometheus
+            type: prometheus
+            url: http://{{ .Release.Name }}-prometheus-prometheus:9090
+            access: proxy
+            isDefault: true
+
+          - name: CloudWatch
+            type: cloudwatch
+            access: proxy
+            jsonData:
+              authType: default  # uses the pod's IAM role (IRSA)
+              defaultRegion: us-east-1
+
+    # Dashboards provisioned from the chart (not hand-clicked in UI)
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: default
+            orgId: 1
+            folder: ""
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+
+    dashboardsConfigMaps:
+      default: grafana-dashboards
+
+    # Grafana image — pinned for reproducibility
+    image:
+      tag: "11.1.4"
+
+    # Resource limits
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  # -------------------------------------------------------------------------
+  # Alertmanager
+  # -------------------------------------------------------------------------
+  alertmanager:
+    enabled: true
+
+    # Minimal placeholder config — story 2.3 owns alert rules and Slack routing
+    # Story 2.3 should submit PRs against:
+    #   eks-monitoring/chart/templates/alertmanager/config.yaml
+    alertmanagerSpec:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 2Gi
+
+  # -------------------------------------------------------------------------
+  # Default exporters (all enabled — feeds cluster overview dashboard)
+  # -------------------------------------------------------------------------
+  nodeExporter:
+    enabled: true
+
+  kubeStateMetrics:
+    enabled: true
+
+  kubeApiServer:
+    enabled: true
+
+  kubelet:
+    enabled: true
+
+  kubeControllerManager:
+    enabled: true
+
+  kubeScheduler:
+    enabled: true
+
+  kubeEtcd:
+    enabled: true
+
+  # -------------------------------------------------------------------------
+  # Default rules — keep the community rules, add SLO rules via templates
+  # -------------------------------------------------------------------------
+  defaultRules:
+    create: true
+    rules:
+      alertmanager: true
+      etcd: true
+      configReloaders: true
+      general: true
+      k8sContainerCpuUsageSecondsTotal: true
+      k8sContainerMemoryCache: true
+      k8sContainerMemoryRss: true
+      k8sContainerMemoryWorkingSetBytes: true
+      k8sPodOwner: true
+      kubeApiserverAvailability: true
+      kubeApiserverBurnrate: true
+      kubeApiserverHistogram: true
+      kubeApiserverSlos: true
+      kubeControllerManager: true
+      kubelet: true
+      kubeProxy: false   # not used on EKS
+      kubePrometheusGeneral: true
+      kubePrometheusNodeRecording: true
+      kubernetesApps: true
+      kubernetesResources: true
+      kubernetesStorage: true
+      kubernetesSystem: true
+      kubeSchedulerAlerting: true
+      kubeSchedulerRecording: true
+      kubeStateMetrics: true
+      network: true
+      node: true
+      nodeExporterAlerting: true
+      nodeExporterRecording: true
+      prometheus: true
+      prometheusOperator: true
