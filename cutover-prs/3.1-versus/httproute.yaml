@@ -1,0 +1,43 @@
+# Cutover PR: 3.1 Versus — Ingress → HTTPRoute
+#
+# Submit this file as a PR into the versus-25c-ubuntu repo,
+# feature/3.1-versus branch (and main).
+#
+# Before submitting, verify against the Helm chart values:
+#   - namespace matches where Versus is deployed
+#   - service names match the Helm chart's Service resource names
+#   - port numbers match the container ports exposed by each service
+#   - hostname matches the value hardcoded in the existing Ingress
+#
+# The existing Ingress object must NOT be deleted until after this
+# HTTPRoute is verified end-to-end through the ALB.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: versus
+  namespace: versus
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: team-gateway
+      namespace: platform-tools
+  hostnames:
+    - "versus-ubuntu-dev.312ubuntu.com"
+  rules:
+    # API traffic goes to the Python backend first (more specific path)
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: versus-backend
+          port: 5000
+    # All other traffic goes to the NGINX-served frontend SPA
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: versus-frontend
+          port: 80

@@ -23,9 +23,9 @@ See `docs/httproute-conventions.md` for the HTTPRoute authoring contract.
 
 | App | Story | Branch | Cutover PR | HTTPRoute status | Ingress removed | Notes |
 |---|---|---|---|---|---|---|
-| Versus | 3.1 | `feature/3.1-versus` | — | `pending` | No | |
-| Proshop | 3.3 | `feature/3.3-proshop` | — | `pending` | No | |
-| Weather backend | 3.5 | `feature/3.5-weather` | — | `pending` | No | |
+| Versus | 3.1 | `feature/3.1-versus` | `cutover-prs/3.1-versus/httproute.yaml` | `pr-open` | No | Verify service names + ports against Helm chart before submitting |
+| Proshop | 3.3 | `feature/3.3-proshop` | `cutover-prs/3.3-proshop/httproute.yaml` | `pr-open` | No | Verify service names + ports against Helm chart before submitting |
+| Weather backend | 3.5 | `feature/3.5-weather` | `cutover-prs/3.5-weather/httproute.yaml` | `pr-open` | No | Backend-only, single service; verify port against Helm chart |
 
 ---
 
@@ -43,3 +43,5 @@ See `docs/httproute-conventions.md` for the HTTPRoute authoring contract.
 ingress-nginx will be removed **only when all three rows above show `confirmed` and `Ingress removed: Yes`**.
 
 Current state: **0 / 3 confirmed** — ingress-nginx remains active.
+
+HTTPRoute manifests are staged in `cutover-prs/` and ready to submit as PRs once the app repos' feature branches exist.

@@ -1,0 +1,37 @@
+# Cutover PR: 3.5 Weather backend — Ingress → HTTPRoute
+#
+# Submit this file as a PR into the weather-25c-ubuntu repo,
+# feature/3.5-weather branch (and main).
+#
+# Before submitting, verify against the Helm chart values:
+#   - namespace matches where the Weather backend is deployed
+#   - service name matches the Helm chart's Service resource name
+#   - port number matches the container port exposed by the service
+#   - hostname matches the value hardcoded in the existing Ingress
+#
+# Note: Weather is a backend-only service (no frontend deployment).
+# All traffic routes to the single Node.js service.
+#
+# The existing Ingress object must NOT be deleted until after this
+# HTTPRoute is verified end-to-end through the ALB.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: weather
+  namespace: weather
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: team-gateway
+      namespace: platform-tools
+  hostnames:
+    - "weather-ubuntu-dev.312ubuntu.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: weather-backend
+          port: 3000
