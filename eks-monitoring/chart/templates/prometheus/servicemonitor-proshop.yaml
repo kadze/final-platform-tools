@@ -1,0 +1,36 @@
+# =============================================================================
+# eks-monitoring/chart/templates/prometheus/servicemonitor-proshop.yaml
+#
+# ServiceMonitor — scrapes Proshop backend /metrics endpoint
+# Coordinated with teammate2 (MRP25CUBUN-11)
+# SLO anchor: POST /api/orders success rate (99.5% over 30 days)
+# =============================================================================
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: proshop-backend
+  namespace: {{ .Values.namespace }}
+  labels:
+    team: {{ .Values.team }}
+    app: proshop
+spec:
+  # Matches teammate2's Proshop backend Service by label
+  # teammate2 must add label app: proshop-backend to her K8s Service
+  selector:
+    matchLabels:
+      app: proshop-backend
+  # Look for the Service in the proshop namespace
+  namespaceSelector:
+    matchNames:
+      - proshop
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      # Relabel to add app identifier to all scraped metrics
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_service_name]
+          targetLabel: service
+        - targetLabel: app
+          replacement: proshop
