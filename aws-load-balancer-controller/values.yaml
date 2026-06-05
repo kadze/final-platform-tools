@@ -1,0 +1,24 @@
+# AWS Load Balancer Controller — Helm values
+# Installed into kube-system via deploy-platform-tools.yaml
+# IAM role ARN is injected at deploy time via --set from the GHA workflow
+
+clusterName: temporary-eks-cluster-dev
+region: us-east-1
+
+# vpcId is required for the controller to discover subnets
+# Fill in from Story 1.1 VPC output
+vpcId: VPC_ID_PLACEHOLDER
+
+# Enable Gateway API support (requires Gateway API CRDs installed first)
+enableGatewayAPI: true
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  # role-arn injected at deploy time via --set in the workflow
+  annotations: {}
+
+# IPv6-primary cluster: pods have IPv6 addresses.
+# ALB uses ip target type to reach pods directly — required for IPv6 pod targets.
+defaultTargetType: ip
+enableIpv6: true
