@@ -1,0 +1,32 @@
+# =============================================================================
+# eks-monitoring/chart/values-dev.yaml
+# Dev environment overrides
+# =============================================================================
+
+kube-prometheus-stack:
+
+  prometheus:
+    prometheusSpec:
+      retention: 7d   # shorter in dev to save storage
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 10Gi
+      externalLabels:
+        cluster: temporary-eks-cluster-dev
+        team: ubuntu
+        environment: dev
+
+  grafana:
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      annotations:
+        # Restrict to your home public IP for the demo
+        # Replace with your actual public IP: curl ifconfig.me
+        nginx.ingress.kubernetes.io/whitelist-source-range: "YOUR_PUBLIC_IP/32"
+      hosts:
+        - grafana-ubuntu-dev.312ubuntu.com
+      tls: []   # no TLS in dev — cert-manager (story 1.5) adds this later
