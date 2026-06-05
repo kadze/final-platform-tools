@@ -1,0 +1,173 @@
+# =============================================================================
+# eks-monitoring/chart/templates/grafana/dashboards-configmap.yaml
+#
+# ConfigMap that provisions Grafana dashboards as code.
+# Grafana reads from this ConfigMap on startup via dashboardsConfigMaps in values.yaml.
+# Do NOT hand-click dashboards in the UI — all dashboards live here.
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: {{ .Values.namespace }}
+  labels:
+    team: {{ .Values.team }}
+    grafana_dashboard: "1"
+data:
+  cluster-overview.json: |
+    {
+      "title": "Cluster Overview",
+      "uid": "cluster-overview",
+      "tags": ["kubernetes", "ubuntu"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "title": "Node CPU Utilisation",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [{
+            "expr": "1 - avg(rate(node_cpu_seconds_total{mode='idle'}[5m])) by (node)",
+            "legendFormat": "{{ "{{node}}" }}"
+          }]
+        },
+        {
+          "title": "Node Memory Utilisation",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [{
+            "expr": "1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+            "legendFormat": "{{ "{{instance}}" }}"
+          }]
+        },
+        {
+          "title": "Pod Restarts (last 1h)",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+          "targets": [{
+            "expr": "sum(increase(kube_pod_container_status_restarts_total[1h]))",
+            "legendFormat": "Restarts"
+          }]
+        },
+        {
+          "title": "Running Pods",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+          "targets": [{
+            "expr": "sum(kube_pod_status_phase{phase='Running'})",
+            "legendFormat": "Running"
+          }]
+        }
+      ]
+    }
+
+  slo-panel.json: |
+    {
+      "title": "SLO Dashboard",
+      "uid": "slo-panel",
+      "tags": ["slo", "ubuntu"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "title": "Proshop — Order Success Rate (30d)",
+          "description": "SLO target: 99.5%. Red line = SLO threshold.",
+          "type": "gauge",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0.99,
+              "max": 1,
+              "thresholds": {
+                "steps": [
+                  { "color": "red", "value": 0 },
+                  { "color": "yellow", "value": 0.995 },
+                  { "color": "green", "value": 0.998 }
+                ]
+              }
+            }
+          },
+          "targets": [{
+            "expr": "slo:proshop_order_success_rate:ratio_rate30d",
+            "legendFormat": "Success Rate"
+          }]
+        },
+        {
+          "title": "Proshop — Error Budget Remaining",
+          "description": "1.0 = full budget. 0 = budget exhausted.",
+          "type": "gauge",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "steps": [
+                  { "color": "red", "value": 0 },
+                  { "color": "yellow", "value": 0.5 },
+                  { "color": "green", "value": 0.8 }
+                ]
+              }
+            }
+          },
+          "targets": [{
+            "expr": "slo:proshop_order_error_budget_remaining:ratio",
+            "legendFormat": "Budget Remaining"
+          }]
+        },
+        {
+          "title": "Versus — Category Listing p99 Latency (5m)",
+          "description": "SLO target: p99 < 800ms. Red line = 800ms threshold.",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": 0 },
+                  { "color": "red", "value": 0.8 }
+                ]
+              }
+            }
+          },
+          "targets": [{
+            "expr": "slo:versus_categories_p99_latency:histogram_quantile5m",
+            "legendFormat": "p99 latency"
+          }]
+        },
+        {
+          "title": "Proshop — Order Request Rate",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{app='proshop', route='/api/orders', status_code=~'2..'}[5m]))",
+              "legendFormat": "Success"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{app='proshop', route='/api/orders', status_code!~'2..'}[5m]))",
+              "legendFormat": "Errors"
+            }
+          ]
+        },
+        {
+          "title": "Versus — Category Request Rate",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "expr": "sum(rate(django_http_responses_total_by_status_url_template_total{app='versus', url_name='categories-list', status=~'2..'}[5m]))",
+              "legendFormat": "Success"
+            },
+            {
+              "expr": "sum(rate(django_http_responses_total_by_status_url_template_total{app='versus', url_name='categories-list', status!~'2..'}[5m]))",
+              "legendFormat": "Errors"
+            }
+          ]
+        }
+      ]
+    }
