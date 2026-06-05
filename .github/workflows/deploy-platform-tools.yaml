@@ -51,6 +51,21 @@ jobs:
       - name: Deploy EKS Logging
         run: |
             echo "Deploy EKS Logging steps go here"
+      
+      # EKS Monitoring
+      - name: Deploy EKS Monitoring (Prometheus + Grafana + Alertmanager)
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm dependency update eks-monitoring/chart
+          helm upgrade --install monitoring eks-monitoring/chart \
+            --namespace monitoring \
+            --create-namespace \
+            -f eks-monitoring/chart/values.yaml \
+            -f eks-monitoring/chart/values-dev.yaml \
+            --wait \
+            --timeout 5m
 
       # Repeat for each additional tool...
       # Example: Deploy External DNS
