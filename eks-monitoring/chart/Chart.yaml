@@ -1,0 +1,15 @@
+apiVersion: v2
+name: eks-monitoring
+description: Prometheus + Grafana + Alertmanager monitoring stack for the 312school Ubuntu EKS cluster
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+maintainers:
+  - name: teammate6
+    email: teammate6
+
+dependencies:
+  - name: kube-prometheus-stack
+    version: "61.3.2"
+    repository: https://prometheus-community.github.io/helm-charts
