@@ -26,7 +26,7 @@ kube-prometheus-stack:
       annotations:
         # Restrict to your home public IP for the demo
         # Replace with your actual public IP: curl ifconfig.me
-        nginx.ingress.kubernetes.io/whitelist-source-range: "YOUR_PUBLIC_IP/32"
+        nginx.ingress.kubernetes.io/whitelist-source-range: 107.206.79.148
       hosts:
         - grafana-ubuntu-dev.312ubuntu.com
       tls: []   # no TLS in dev — cert-manager (story 1.5) adds this later
