@@ -32,3 +32,6 @@ This repository uses two main GitHub Actions workflows:
 ## Final Notes
 - Ensure all deployments and configurations are well-documented.
 - Regularly update the README files in each directory with relevant information, including issues faced and resources used.
+## Working with AI — your memoir (deliverable)
+
+This repo includes the memoir template at [`docs/working-with-ai-template.md`](docs/working-with-ai-template.md). Copy it into your story folder as `WORKING-WITH-AI.md` and fill it in **as you work** — it is a required deliverable for your primary story, and the artifact that pays you back at interview time.
