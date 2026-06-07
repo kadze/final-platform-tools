@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kafka-platform
+  namespace: argocd
+spec:
+  project: default
+  source:
+    # My manifest repo
+    repoURL: https://github.com/312school/platform-tools-25c-ubuntu
+    targetRevision: feature/story-4.2-kafka-argocd #my working branch
+    path: kafka-argocd  # folder ArgoCD watches
+    # destination where I am deploying (my cluster)
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true 
