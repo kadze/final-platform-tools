@@ -1,0 +1,81 @@
+# =============================================================================
+# Elasticsearch - the log storage and search engine
+# Runs as a StatefulSet because it needs persistent storage (like a database)
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: elasticsearch
+spec:
+  serviceName: elasticsearch
+  replicas: {{ .Values.elasticsearch.replicas }}
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+        - name: elasticsearch
+          image: {{ .Values.elasticsearch.image }}:{{ .Values.elasticsearch.imageTag }}
+          ports:
+            - containerPort: 9200   # REST API port - how Kibana and Fluentd talk to it
+            - containerPort: 9300   # Internal cluster communication port
+          env:
+            - name: discovery.type
+              value: single-node    # Simple setup - one node, no clustering
+            - name: ES_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"   # Memory limits - keeps it small for dev
+            - name: xpack.security.enabled
+              value: "true"         # Enables authentication
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-credentials  # From AWS Secrets Manager (Step 8)
+                  key: password
+          volumeMounts:
+            - name: elasticsearch-data
+              mountPath: /usr/share/elasticsearch/data  # Where it stores log data
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+  volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.elasticsearch.storage }}
+---
+# =============================================================================
+# Elasticsearch Service - gives Fluentd and Kibana a stable address to connect to
+# Think of it like a phone number that always reaches Elasticsearch
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: elasticsearch
+spec:
+  selector:
+    app: elasticsearch
+  ports:
+    - name: rest
+      port: 9200
+      targetPort: 9200
+    - name: inter-node
+      port: 9300
+      targetPort: 9300
+  type: ClusterIP   # Only reachable inside the cluster - not exposed to internet

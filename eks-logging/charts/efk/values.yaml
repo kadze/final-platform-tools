@@ -22,3 +22,6 @@ kibana:
 s3:
   bucket: "383585068161-state-bucket-dev"
   region: "us-east-1"
+
+kibana:
+  allowedSourceIP: "127.0.0.1/32"   # overridden per environment in values/dev.yaml

@@ -24,3 +24,5 @@ s3:
   bucket: "383585068161-state-bucket-dev"
   region: "us-east-1"
 EOF
+
+  allowedSourceIP: "174.62.135.239/32"
