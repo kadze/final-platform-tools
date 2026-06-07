@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     # My manifest repo
-    repoURL: https://github.com/312school/platform-tools-25c-ubuntu
+    repoURL: git@github.com:312school/platform-tools-25c-ubuntu.git
     targetRevision: feature/story-4.2-kafka-argocd #my working branch
     path: kafka-argocd  # folder ArgoCD watches
     directory:
