@@ -10,6 +10,8 @@ spec:
     repoURL: https://github.com/312school/platform-tools-25c-ubuntu
     targetRevision: feature/story-4.2-kafka-argocd #my working branch
     path: kafka-argocd  # folder ArgoCD watches
+    directory:
+      recurse: true
     # destination where I am deploying (my cluster)
   destination:
     server: https://kubernetes.default.svc
