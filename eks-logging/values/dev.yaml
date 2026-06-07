@@ -1,0 +1,26 @@
+#!/bin/bash
+
+cat > values/dev.yaml << 'EOF'
+# Dev environment overrides for EFK stack
+
+global:
+  namespace: logging
+
+elasticsearch:
+  replicas: 1
+  storage: 10Gi
+
+kibana:
+  host: "kibana-ubuntu-dev.312ubuntu.com"
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      # Restrict Kibana to your home IP only - security requirement
+      nginx.ingress.kubernetes.io/whitelist-source-range: "174.62.135.239/32"
+    tls: []  # no TLS in dev - cert-manager (story 1.5) adds this later
+
+s3:
+  bucket: "383585068161-state-bucket-dev"
+  region: "us-east-1"
+EOF
