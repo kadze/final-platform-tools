@@ -1,7 +1,3 @@
-# =============================================================================
-# Kibana - the web dashboard for searching and visualizing logs
-# Runs as a Deployment (stateless - no data stored here, all data is in ES)
-# =============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -67,10 +63,6 @@ spec:
       targetPort: 5601
   type: ClusterIP
 ---
-# =============================================================================
-# Kibana Ingress - the front door that makes the URL work
-# whitelist-source-range locks it to your home IP only
-# =============================================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

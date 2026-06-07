@@ -1,8 +1,3 @@
-#!/bin/bash
-
-cat > values/staging.yaml << 'EOF'
-# Staging environment overrides for EFK stack
-
 global:
   namespace: logging
 
@@ -12,6 +7,7 @@ elasticsearch:
 
 kibana:
   host: "kibana-ubuntu-staging.312ubuntu.com"
+  allowedSourceIP: "REPLACE_WITH_OFFICE_IP/32"
   ingress:
     enabled: true
     ingressClassName: nginx
@@ -22,4 +18,3 @@ kibana:
 s3:
   bucket: "383585068161-state-bucket-dev"
   region: "us-east-1"
-EOF

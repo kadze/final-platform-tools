@@ -1,8 +1,3 @@
-# =============================================================================
-# Fluentd - the log collector and shipper
-# DaemonSet means one Fluentd pod runs on EVERY node automatically
-# It picks up logs from all containers and ships to Elasticsearch + S3
-# =============================================================================
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -19,10 +14,10 @@ spec:
       labels:
         app: fluentd
     spec:
-      serviceAccountName: fluentd   # Needs permission to read pod logs
+      serviceAccountName: fluentd   
       tolerations:
         - key: node-role.kubernetes.io/master
-          effect: NoSchedule        # Also run on master nodes if any
+          effect: NoSchedule        
       containers:
         - name: fluentd
           image: {{ .Values.fluentd.image }}:{{ .Values.fluentd.imageTag }}
@@ -55,27 +50,23 @@ spec:
               cpu: "100m"
           volumeMounts:
             - name: varlog
-              mountPath: /var/log             # Where Kubernetes writes container logs
+              mountPath: /var/log            
             - name: varlibdockercontainers
               mountPath: /var/lib/docker/containers
               readOnly: true
             - name: fluentd-config
-              mountPath: /fluentd/etc         # Our custom Fluentd config
+              mountPath: /fluentd/etc        
       volumes:
         - name: varlog
           hostPath:
-            path: /var/log                    # Reads directly from the node's disk
+            path: /var/log                    
         - name: varlibdockercontainers
           hostPath:
-            path: /var/lib/docker/containers  # Where Docker stores container logs
+            path: /var/lib/docker/containers  
         - name: fluentd-config
           configMap:
-            name: fluentd-config              # Defined below
+            name: fluentd-config              
 ---
-# =============================================================================
-# Fluentd ConfigMap - the actual routing rules
-# This tells Fluentd: "collect these logs, parse them, send to these destinations"
-# =============================================================================
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -137,10 +128,6 @@ data:
       </store>
     </match>
 ---
-# =============================================================================
-# ServiceAccount + ClusterRole - gives Fluentd permission to read pod metadata
-# Without this, Fluentd can't see which pod/namespace a log came from
-# =============================================================================
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -154,7 +141,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["pods", "namespaces"]
-    verbs: ["get", "list", "watch"]   # Read-only access to pod info
+    verbs: ["get", "list", "watch"]  
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

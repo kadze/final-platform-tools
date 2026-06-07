@@ -1,6 +1,3 @@
-# Default values for EFK stack
-# These get overridden by values/dev.yaml, values/staging.yaml etc.
-
 global:
   namespace: logging
 
@@ -18,10 +15,8 @@ kibana:
   image: docker.elastic.co/kibana/kibana
   imageTag: "8.13.0"
   host: "kibana-ubuntu-dev.312ubuntu.com"
+  allowedSourceIP: "127.0.0.1/32"
 
 s3:
   bucket: "383585068161-state-bucket-dev"
   region: "us-east-1"
-
-kibana:
-  allowedSourceIP: "127.0.0.1/32"   # overridden per environment in values/dev.yaml

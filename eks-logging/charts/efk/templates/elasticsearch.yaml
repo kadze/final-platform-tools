@@ -1,7 +1,3 @@
-# =============================================================================
-# Elasticsearch - the log storage and search engine
-# Runs as a StatefulSet because it needs persistent storage (like a database)
-# =============================================================================
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -24,23 +20,23 @@ spec:
         - name: elasticsearch
           image: {{ .Values.elasticsearch.image }}:{{ .Values.elasticsearch.imageTag }}
           ports:
-            - containerPort: 9200   # REST API port - how Kibana and Fluentd talk to it
-            - containerPort: 9300   # Internal cluster communication port
+            - containerPort: 9200   
+            - containerPort: 9300   
           env:
             - name: discovery.type
-              value: single-node    # Simple setup - one node, no clustering
+              value: single-node    
             - name: ES_JAVA_OPTS
-              value: "-Xms512m -Xmx512m"   # Memory limits - keeps it small for dev
+              value: "-Xms512m -Xmx512m"   
             - name: xpack.security.enabled
-              value: "true"         # Enables authentication
+              value: "true"         
             - name: ELASTIC_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: elasticsearch-credentials  # From AWS Secrets Manager (Step 8)
+                  name: elasticsearch-credentials  
                   key: password
           volumeMounts:
             - name: elasticsearch-data
-              mountPath: /usr/share/elasticsearch/data  # Where it stores log data
+              mountPath: /usr/share/elasticsearch/data  
           resources:
             requests:
               memory: "1Gi"
@@ -57,10 +53,6 @@ spec:
           requests:
             storage: {{ .Values.elasticsearch.storage }}
 ---
-# =============================================================================
-# Elasticsearch Service - gives Fluentd and Kibana a stable address to connect to
-# Think of it like a phone number that always reaches Elasticsearch
-# =============================================================================
 apiVersion: v1
 kind: Service
 metadata:
@@ -78,4 +70,4 @@ spec:
     - name: inter-node
       port: 9300
       targetPort: 9300
-  type: ClusterIP   # Only reachable inside the cluster - not exposed to internet
+  type: ClusterIP   
