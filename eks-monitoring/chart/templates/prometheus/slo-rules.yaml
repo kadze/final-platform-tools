@@ -117,4 +117,4 @@ spec:
             slo: versus-categories-latency
           annotations:
             summary: "Versus category listing p99 latency above 800ms"
-            description: "p99 latency for GET /api/v1/categories/ is {{ $value | humanizeDuration }}. SLO target is 800ms. Check Django ORM queries and MySQL performance."
+            description: "p99 latency for GET /api/v1/categories/ is {{`{{ $value | humanizeDuration }}`}}. SLO target is 800ms. Check Django ORM queries and MySQL performance."
