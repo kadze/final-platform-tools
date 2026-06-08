@@ -33,20 +33,28 @@ resource "aws_iam_role" "gitlab_runner_job" {
   })
 
   tags = {
-    Project = "mrp25-ubuntu"
-    Story   = "4.1"
-    Purpose = "GitLab CI job pods - IRSA"
+    component = "gitlab-runner"
   }
 }
 
 resource "aws_iam_policy" "gitlab_runner_job_packer" {
-  name   = "gitlab-runner-job-policy-packer-ec2"
-  policy = templatefile("${path.module}/policies/packer-ec2.json", {})
+  name        = "gitlab-runner-job-policy-packer-ec2"
+  description = "Allows GitLab runner job pods to build AMIs with Packer"
+  policy      = templatefile("${path.module}/policies/packer-ec2.json", {})
+
+  tags = {
+    component = "gitlab-runner"
+  }
 }
 
 resource "aws_iam_policy" "gitlab_runner_job_state" {
-  name   = "gitlab-runner-job-policy-terraform-state"
-  policy = templatefile("${path.module}/policies/terraform-state-s3.json", { bucket_name = var.terraform_state_bucket })
+  name        = "gitlab-runner-job-policy-terraform-state"
+  description = "Allows GitLab runner job pods to read/write Terraform state on S3"
+  policy      = templatefile("${path.module}/policies/terraform-state-s3.json", { bucket_name = var.terraform_state_bucket })
+
+  tags = {
+    component = "gitlab-runner"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "gitlab_runner_job_packer" {
