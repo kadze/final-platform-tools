@@ -11,6 +11,5 @@ variable "cluster_name" {
 
 variable "terraform_state_bucket" {
   type        = string
-  default     = "383585068161-state-bucket-dev"
-  description = "Name of the shared S3 state bucket created by Story 1.1. Update this value once the bucket has been provisioned by that story."
+  description = "Name of the shared S3 state bucket. Set in terraform.tfvars."
 }
