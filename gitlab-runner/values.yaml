@@ -1,0 +1,19 @@
+gitlabUrl: https://gitlab.com
+runnerToken: ""
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: gitlab-runner-sa
+
+runners:
+  config: |
+    [[runners]]
+      [runners.kubernetes]
+        namespace = "gitlab-runner"
+        image = "alpine:latest"
+        privileged = false
+
+concurrent: 4
