@@ -27,4 +27,5 @@ spec:
           type: persistent-claim
           size: 5Gi
           deleteClaim: false
+          class: gp2
  
