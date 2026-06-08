@@ -1,0 +1,21 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  # AL2023 is required for IPv6-primary clusters — AL2 has no IPv6 pod support
+  amiSelectorTerms:
+    - alias: al2023@latest
+  # Node IAM role name (not ARN) — Karpenter manages the instance profile automatically.
+  # Convention matches terraform-infra karpenter-iam module: karpenter-node-<cluster-name>
+  role: karpenter-node-${CLUSTER_NAME}
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+  tags:
+    team: ubuntu
+    environment: dev
+    component: karpenter
