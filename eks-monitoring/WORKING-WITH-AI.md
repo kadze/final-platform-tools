@@ -62,6 +62,25 @@ Claude suggested adding a home public IP to `values-dev.yaml` without mentioning
 Claude used `312ubuntu.com` as the Grafana hostname domain without confirming this is the actual team domain. This is a placeholder that needs to be verified with the PM. All ingress hostnames in values-dev/staging/prod.yaml may need updating.
 *[Update this once confirmed in PM meeting]*
 
+**Incident 4 — ServiceMonitor release label not included**
+Claude wrote the ServiceMonitor without the `release: monitoring` label. 
+Prometheus Operator is configured with `serviceMonitorSelector: matchLabels: release: monitoring` 
+— any ServiceMonitor without this label is silently ignored. Claude did not check the 
+Prometheus selector configuration before writing the ServiceMonitor. Caught during debugging 
+when the target wasn't appearing.
+
+**Incident 5 — Port named "http" instead of "metrics"**
+Claude assumed teammate2's Service port would be named "http". It had no name at all, 
+and the correct name to use was "metrics" to match the /metrics endpoint convention. 
+Required patching both the Service (to add the name) and the ServiceMonitor (to use 
+the correct name).
+
+**Incident 6 — RBAC not considered for cross-namespace scraping**
+Claude did not mention that Prometheus needs a RoleBinding in each target namespace 
+to discover Services. The proshop namespace had no RoleBinding so Prometheus couldn't 
+see the Service at all. Fixed by creating a RoleBinding manually — this should be 
+added to the Helm chart as a template.
+
 *[Add more incidents here as the project progresses]*
 
 ---
