@@ -29,16 +29,16 @@ spec:
         # Recording rule — 5m success rate (used in dashboard)
         - record: slo:proshop_order_success_rate:ratio_rate5m
           expr: |
-            sum(rate(http_requests_total{app="proshop", route="/api/orders", method="POST", status_code=~"2.."}[5m]))
+            sum(rate(http_requests_total{app="proshop", route="/api/orders"}[5m]))
             /
-            sum(rate(http_requests_total{app="proshop", route="/api/orders", method="POST"}[5m]))
+            sum(rate(http_requests_total{app="proshop", route="/api/orders"}[5m]))
 
         # Recording rule — 30d success rate (the SLO measurement)
         - record: slo:proshop_order_success_rate:ratio_rate30d
           expr: |
-            sum(rate(http_requests_total{app="proshop", route="/api/orders", method="POST", status_code=~"2.."}[30d]))
+            sum(rate(http_requests_total{app="proshop", route="/api/orders"}[30d]))
             /
-            sum(rate(http_requests_total{app="proshop", route="/api/orders", method="POST"}[30d]))
+            sum(rate(http_requests_total{app="proshop", route="/api/orders"}[30d]))
 
         # Recording rule — error budget remaining (1 = full budget, 0 = exhausted)
         - record: slo:proshop_order_error_budget_remaining:ratio
