@@ -6,6 +6,10 @@ metadata:
 spec:
   scheme: internet-facing
   ipAddressType: dualstack
+  tags:
+    team: ubuntu
+    component: platform-tools
+    environment: dev
   # Tag-based subnet discovery: selects all subnets tagged kubernetes.io/role/elb=1
   # (set by Story 1.1 on the 3 public /18 subnets).
   # Works because Gateway is linked to this LBC via spec.infrastructure.parametersRef —
