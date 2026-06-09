@@ -1,5 +1,5 @@
 # =============================================================================
-# eks-monitoring/chart/templates/grafana/dashboards-configmap.yaml
+# eks-monitoring/grafana/templates/dashboards-configmap.yaml
 #
 # ConfigMap that provisions Grafana dashboards as code.
 # Grafana reads from this ConfigMap on startup via dashboardsConfigMaps in values.yaml.

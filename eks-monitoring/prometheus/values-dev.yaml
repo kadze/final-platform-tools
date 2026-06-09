@@ -1,0 +1,19 @@
+# =============================================================================
+# eks-monitoring/prometheus/values-dev.yaml
+# Dev environment overrides
+# =============================================================================
+
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 7d
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 10Gi
+      externalLabels:
+        cluster: temporary-eks-cluster-dev
+        team: ubuntu
+        environment: dev

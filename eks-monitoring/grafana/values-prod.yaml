@@ -1,0 +1,22 @@
+# =============================================================================
+# eks-monitoring/grafana/values-prod.yaml
+# Production environment overrides (not deployed yet — defined for completeness)
+# =============================================================================
+
+customIngress:
+  host: "grafana.ubuntu-prod.<DOMAIN>"
+  annotations:
+    nginx.ingress.kubernetes.io/whitelist-source-range: "YOUR_PROD_IP/32"
+  tls:
+    - secretName: grafana-ubuntu-prod-tls
+      hosts:
+        - grafana.ubuntu-prod.<DOMAIN>
+
+grafana:
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

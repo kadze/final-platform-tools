@@ -1,10 +1,9 @@
 # =============================================================================
-# eks-monitoring/chart/values-staging.yaml
+# eks-monitoring/prometheus/values-staging.yaml
 # Staging environment overrides (not deployed yet — defined for completeness)
 # =============================================================================
 
 kube-prometheus-stack:
-
   prometheus:
     prometheusSpec:
       retention: 15d
@@ -18,16 +17,3 @@ kube-prometheus-stack:
         cluster: temporary-eks-cluster-staging
         team: ubuntu
         environment: staging
-
-  grafana:
-    ingress:
-      enabled: true
-      ingressClassName: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/whitelist-source-range: "YOUR_STAGING_IP/32"
-      hosts:
-        - grafana-ubuntu-staging.312ubuntu.com
-      tls:
-        - secretName: grafana-ubuntu-staging-tls
-          hosts:
-            - grafana-ubuntu-staging.312ubuntu.com

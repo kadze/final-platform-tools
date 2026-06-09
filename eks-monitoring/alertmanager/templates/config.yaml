@@ -1,5 +1,5 @@
 # =============================================================================
-# eks-monitoring/chart/templates/alertmanager/config.yaml
+# eks-monitoring/alertmanager/templates/config.yaml
 #
 # Alertmanager configuration — SHARED SEAM with story 2.3
 #
@@ -9,7 +9,9 @@
 #   - Slack / PagerDuty receiver configs
 #   - Inhibition rules
 #
-# Do not deploy a separate Alertmanager — use this one.
+# Note: AlertmanagerConfig CRD is registered by the Prometheus Operator
+# (deployed by the prometheus chart). Story 2.3 owns wiring this to the
+# standalone alertmanager deployment.
 # =============================================================================
 
 apiVersion: monitoring.coreos.com/v1alpha1

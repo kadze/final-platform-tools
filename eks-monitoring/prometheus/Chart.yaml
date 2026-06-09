@@ -1,9 +1,9 @@
 apiVersion: v2
-name: eks-monitoring
-description: Prometheus + Grafana + Alertmanager monitoring stack for the 312school Ubuntu EKS cluster
+name: prometheus
+description: Prometheus monitoring for the 312school Ubuntu EKS cluster — wraps kube-prometheus-stack
 type: application
 version: 0.1.0
-appVersion: "0.1.0"
+appVersion: "61.3.2"
 
 maintainers:
   - name: teammate6

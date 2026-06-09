@@ -1,0 +1,117 @@
+# =============================================================================
+# eks-monitoring/prometheus/values.yaml
+# Shared defaults for the Prometheus chart
+# Owner: teammate6 (MRP25CUBUN-6)
+# =============================================================================
+
+team: ubuntu
+namespace: monitoring
+
+scrapeTargets:
+  versus:
+    enabled: false   # enable when teammate10 deploys to versus namespace
+  proshop:
+    enabled: true
+
+kube-prometheus-stack:
+
+  # Grafana and Alertmanager are managed by their own charts
+  grafana:
+    enabled: false
+
+  alertmanager:
+    enabled: false
+
+  # -------------------------------------------------------------------------
+  # Prometheus
+  # -------------------------------------------------------------------------
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      scrapeInterval: 30s
+      evaluationInterval: 30s
+      retention: 15d
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 20Gi
+      serviceMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorNamespaceSelector: {}
+      serviceMonitorSelector: {}
+      externalLabels:
+        cluster: temporary-eks-cluster-dev
+        team: ubuntu
+        environment: dev
+      additionalScrapeConfigs: []
+      # Route alerts to the standalone alertmanager chart (release: alertmanager)
+      alerting:
+        alertmanagers:
+          - namespace: monitoring
+            name: alertmanager
+            port: http-web
+            apiVersion: v2
+
+  # -------------------------------------------------------------------------
+  # Exporters
+  # -------------------------------------------------------------------------
+  nodeExporter:
+    enabled: true
+
+  kubeStateMetrics:
+    enabled: true
+
+  kubeApiServer:
+    enabled: true
+
+  kubelet:
+    enabled: true
+
+  kubeControllerManager:
+    enabled: true
+
+  kubeScheduler:
+    enabled: true
+
+  kubeEtcd:
+    enabled: true
+
+  # -------------------------------------------------------------------------
+  # Default rules
+  # -------------------------------------------------------------------------
+  defaultRules:
+    create: true
+    rules:
+      alertmanager: true
+      etcd: true
+      configReloaders: true
+      general: true
+      k8sContainerCpuUsageSecondsTotal: true
+      k8sContainerMemoryCache: true
+      k8sContainerMemoryRss: true
+      k8sContainerMemoryWorkingSetBytes: true
+      k8sPodOwner: true
+      kubeApiserverAvailability: true
+      kubeApiserverBurnrate: true
+      kubeApiserverHistogram: true
+      kubeApiserverSlos: true
+      kubeControllerManager: true
+      kubelet: true
+      kubeProxy: false   # not used on EKS
+      kubePrometheusGeneral: true
+      kubePrometheusNodeRecording: true
+      kubernetesApps: true
+      kubernetesResources: true
+      kubernetesStorage: true
+      kubernetesSystem: true
+      kubeSchedulerAlerting: true
+      kubeSchedulerRecording: true
+      kubeStateMetrics: true
+      network: true
+      node: true
+      nodeExporterAlerting: true
+      nodeExporterRecording: true
+      prometheus: true
+      prometheusOperator: true

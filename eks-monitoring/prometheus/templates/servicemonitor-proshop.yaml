@@ -1,5 +1,5 @@
 # =============================================================================
-# eks-monitoring/chart/templates/prometheus/servicemonitor-proshop.yaml
+# eks-monitoring/prometheus/templates/servicemonitor-proshop.yaml
 #
 # ServiceMonitor — scrapes Proshop backend /metrics endpoint
 # Coordinated with teammate2 (MRP25CUBUN-11)

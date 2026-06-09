@@ -1,0 +1,101 @@
+# =============================================================================
+# eks-monitoring/grafana/values.yaml
+# Shared defaults for the Grafana chart
+# Owner: teammate6 (MRP25CUBUN-6)
+# =============================================================================
+
+# Custom values used by templates in this chart
+team: ubuntu
+namespace: monitoring
+
+# Custom ingress config — the subchart's built-in ingress is disabled below.
+# templates/ingress.yaml reads these values.
+customIngress:
+  host: "grafana.ubuntu-dev.312ubuntu.com"   # overridden per environment
+  ingressClassName: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/whitelist-source-range: "0.0.0.0/0"
+  tls: []
+
+# ---------------------------------------------------------------------------
+# grafana subchart values
+# ---------------------------------------------------------------------------
+grafana:
+
+  # IRSA annotation — grants Grafana pod read access to CloudWatch via IAM
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::383585068161:role/grafana-cloudwatch-role-ubuntu
+
+  # Admin credentials sourced from AWS Secrets Manager
+  # Create the K8s secret manually before deploying (until story 1.5 CSI driver):
+  #   kubectl create secret generic grafana-admin-secret \
+  #     --from-literal=admin-user=admin \
+  #     --from-literal=admin-password=$(aws secretsmanager get-secret-value \
+  #       --secret-id monitoring/grafana-admin \
+  #       --query SecretString --output text | jq -r '.password') \
+  #     -n monitoring
+  admin:
+    existingSecret: grafana-admin-secret
+    userKey: admin-user
+    passwordKey: admin-password
+
+  # Ingress managed via templates/ingress.yaml — disable built-in
+  ingress:
+    enabled: false
+
+  plugins:
+    - grafana-clock-panel
+
+  # Data sources — Prometheus (cluster) + CloudWatch (AWS-managed resources)
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://monitoring-kube-prometheus-prometheus:9090
+          access: proxy
+          isDefault: true
+
+        - name: CloudWatch
+          type: cloudwatch
+          access: proxy
+          jsonData:
+            authType: default   # uses the pod's IAM role (IRSA)
+            defaultRegion: us-east-1
+
+  # Dashboards provisioned from ConfigMap (not hand-clicked in UI)
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: default
+          orgId: 1
+          folder: ""
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+  dashboardsConfigMaps:
+    default: grafana-dashboards
+
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+
+  image:
+    tag: "11.1.4"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

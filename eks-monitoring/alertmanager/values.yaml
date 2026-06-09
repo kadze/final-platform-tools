@@ -1,0 +1,26 @@
+# =============================================================================
+# eks-monitoring/alertmanager/values.yaml
+# Shared defaults for the Alertmanager chart
+# Placeholder config — story 2.3 owns alert rules and Slack routing
+# Owner: teammate6 (MRP25CUBUN-6)
+# =============================================================================
+
+team: ubuntu
+namespace: monitoring
+
+# ---------------------------------------------------------------------------
+# alertmanager subchart values
+# ---------------------------------------------------------------------------
+alertmanager:
+
+  persistence:
+    enabled: true
+    size: 2Gi
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

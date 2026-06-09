@@ -1,5 +1,5 @@
 # =============================================================================
-# eks-monitoring/chart/templates/prometheus/slo-rules.yaml
+# eks-monitoring/prometheus/templates/slo-rules.yaml
 #
 # PrometheusRule — SLO recording rules and burn-rate alerts
 # Implements the two SLOs defined in eks-monitoring/README.md

@@ -1,11 +1,12 @@
 # =============================================================================
-# eks-monitoring/chart/templates/prometheus/servicemonitor-versus.yaml
+# eks-monitoring/prometheus/templates/servicemonitor-versus.yaml
 #
 # ServiceMonitor — scrapes Versus backend /metrics endpoint
 # Coordinated with teammate10 (MRP25CUBUN-9)
 # SLO anchor: GET /api/v1/categories/ p99 latency < 800ms (99% over 30 days)
 # =============================================================================
 
+{{- if .Values.scrapeTargets.versus.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -34,3 +35,5 @@ spec:
           targetLabel: service
         - targetLabel: app
           replacement: versus
+
+{{- end }}

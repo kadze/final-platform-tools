@@ -28,30 +28,9 @@ Individual targets: `iam`, `eks`, `workers`, `oidc`, `sshkeys`. Each wraps a Clo
 
 ## eks-monitoring (active development)
 
-The monitoring stack is a thin Helm wrapper around `kube-prometheus-stack` (Prometheus + Grafana + Alertmanager). The chart lives at `eks-monitoring/chart/`.
+Three independent Helm charts, one per tool. Each is deployed as its own `helm upgrade --install` step in CI.
 
-**Values layering:** `values.yaml` (shared defaults) is always applied; one environment overlay is added on top:
-- `values-dev.yaml` — shorter retention (7d), 10Gi storage, IP-restricted Grafana ingress
-- `values-staging.yaml` / `values-prod.yaml` — defined but not yet deployed
-
-**Deploy locally (dev):**
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm dependency update eks-monitoring/chart
-helm upgrade --install monitoring eks-monitoring/chart \
-  --namespace monitoring --create-namespace \
-  -f eks-monitoring/chart/values.yaml \
-  -f eks-monitoring/chart/values-dev.yaml \
-  --wait --timeout 5m
-```
-
-**Verify:**
-```bash
-kubectl get pods -n monitoring
-kubectl port-forward svc/monitoring-grafana 3000:80 -n monitoring
-# Grafana credentials: from AWS Secrets Manager secret monitoring/grafana-admin
-```
+**Values layering per chart:** `values.yaml` (shared defaults) + `values-{env}.yaml` overlay.
 
 **Before deploying**, create the Grafana admin secret manually (until story 1.5 CSI driver is wired up):
 ```bash
@@ -63,31 +42,87 @@ kubectl create secret generic grafana-admin-secret \
   -n monitoring
 ```
 
+**Deploy locally (dev) — run in order:**
+```bash
+# 1. Prometheus (installs Prometheus Operator and its CRDs first)
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm dependency update eks-monitoring/prometheus
+helm upgrade --install monitoring eks-monitoring/prometheus \
+  --namespace monitoring --create-namespace \
+  -f eks-monitoring/prometheus/values.yaml \
+  -f eks-monitoring/prometheus/values-dev.yaml \
+  --wait --timeout 5m
+
+# 2. Alertmanager
+helm dependency update eks-monitoring/alertmanager
+helm upgrade --install alertmanager eks-monitoring/alertmanager \
+  --namespace monitoring --create-namespace \
+  -f eks-monitoring/alertmanager/values.yaml \
+  -f eks-monitoring/alertmanager/values-dev.yaml \
+  --wait --timeout 3m
+
+# 3. Grafana
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+helm dependency update eks-monitoring/grafana
+helm upgrade --install grafana eks-monitoring/grafana \
+  --namespace monitoring --create-namespace \
+  -f eks-monitoring/grafana/values.yaml \
+  -f eks-monitoring/grafana/values-dev.yaml \
+  --wait --timeout 3m
+```
+
+**New charts (grafana, alertmanager) require `helm dependency update` before first deploy** — their `Chart.lock` files contain placeholder digests and must be regenerated locally.
+
+**Verify:**
+```bash
+kubectl get pods -n monitoring
+# Grafana is now exposed via ingress (grafana.ubuntu-dev.<DOMAIN>) — no port-forward needed
+# Grafana credentials: from AWS Secrets Manager secret monitoring/grafana-admin
+```
+
 ## Architecture: eks-monitoring internals
 
 ```
-eks-monitoring/chart/
-├── Chart.yaml                          # wraps kube-prometheus-stack v61.3.2
-├── values.yaml + values-{env}.yaml     # layered config
-└── templates/
-    ├── prometheus/
-    │   ├── slo-rules.yaml              # PrometheusRule with SLO recording rules + burn-rate alerts
-    │   ├── servicemonitor-proshop.yaml # scrapes proshop namespace, label app: proshop-backend
-    │   └── servicemonitor-versus.yaml  # scrapes versus namespace
-    ├── grafana/
-    │   ├── admin-secret.yaml           # placeholder only — secret created out-of-band
-    │   └── dashboards-configmap.yaml
-    └── alertmanager/
-        └── config.yaml                 # AlertmanagerConfig — owned here; story 2.3 adds receivers
+eks-monitoring/
+├── prometheus/                         # wraps kube-prometheus-stack v61.3.2
+│   ├── Chart.yaml / Chart.lock
+│   ├── values.yaml + values-{env}.yaml
+│   └── templates/
+│       ├── slo-rules.yaml              # PrometheusRule with SLO recording rules + burn-rate alerts
+│       ├── servicemonitor-proshop.yaml # scrapes proshop namespace, label app: proshop-backend
+│       ├── servicemonitor-versus.yaml  # scrapes versus namespace (conditional on scrapeTargets.versus.enabled)
+│       ├── rolebinding-proshop.yaml    # grants Prometheus view access in proshop namespace
+│       └── rolebinding-versus.yaml    # grants Prometheus view access in versus namespace
+│
+├── grafana/                            # wraps grafana chart v8.5.2
+│   ├── Chart.yaml / Chart.lock
+│   ├── values.yaml + values-{env}.yaml # includes IRSA annotation + CloudWatch datasource
+│   └── templates/
+│       ├── ingress.yaml               # Ingress via ingress-nginx — grafana.ubuntu-dev.<DOMAIN>
+│       ├── dashboards-configmap.yaml  # cluster-overview + SLO panel dashboards as code
+│       └── admin-secret.yaml          # placeholder — secret created out-of-band
+│
+└── alertmanager/                       # wraps prometheus-community/alertmanager v1.12.0
+    ├── Chart.yaml / Chart.lock
+    ├── values.yaml + values-dev.yaml
+    └── templates/
+        └── config.yaml                # AlertmanagerConfig placeholder — story 2.3 owns routing
 ```
 
-**SLOs defined in this chart:**
+**Helm release names (used in service discovery):**
+- Prometheus: `monitoring` → Prometheus service: `monitoring-kube-prometheus-prometheus:9090`
+- Grafana: `grafana` → Grafana service: `grafana-grafana:80`
+- Alertmanager: `alertmanager` → Alertmanager service: `alertmanager:9093`
+
+**SLOs defined in prometheus/templates/slo-rules.yaml:**
 - Proshop `POST /api/orders`: 99.5% success rate over 30 days (availability SLO)
 - Versus `GET /api/v1/categories/`: p99 < 800ms, 99% compliance over 30 days (latency SLO)
 
 Both SLOs use 30-second recording rule intervals. The `app=` label on scraped metrics is set via `relabelings` in the ServiceMonitors — app teams do not need to emit it themselves.
 
-**Alertmanager ownership split:** `alertmanager/config.yaml` is the single Alertmanager deployed for the cluster. Story 2.3 (alerting/on-call) adds receivers and routing rules to that file via PR — do not deploy a separate Alertmanager.
+**Alertmanager ownership split:** `alertmanager/templates/config.yaml` is the single AlertmanagerConfig for the cluster. Story 2.3 (alerting/on-call) adds receivers and routing rules to that file via PR — do not deploy a separate Alertmanager.
 
 ## ingress-nginx
 
@@ -95,7 +130,7 @@ Applied as a raw manifest: `kubectl apply -f ingress-nginx/deploy.yaml`. Grafana
 
 ## Grafana external URL pattern
 
-`grafana-ubuntu-<env>.312ubuntu.com` — configured in each `values-{env}.yaml` under `kube-prometheus-stack.grafana.ingress.hosts`. Update the IP allowlist in `values-dev.yaml` (`nginx.ingress.kubernetes.io/whitelist-source-range`) when your public IP changes (`curl ifconfig.me`).
+`grafana.ubuntu-<env>.<DOMAIN>` — configured in `grafana/values-{env}.yaml` under `customIngress.host`. Update the IP allowlist (`customIngress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range`) in `grafana/values-dev.yaml` when your public IP changes (`curl ifconfig.me`).
 
 ## Contribution rules
 

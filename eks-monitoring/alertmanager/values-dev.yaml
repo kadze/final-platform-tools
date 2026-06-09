@@ -1,0 +1,8 @@
+# =============================================================================
+# eks-monitoring/alertmanager/values-dev.yaml
+# Dev environment overrides
+# =============================================================================
+
+alertmanager:
+  persistence:
+    size: 1Gi
