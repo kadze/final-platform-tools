@@ -1,0 +1,15 @@
+apiVersion: gateway.k8s.aws/v1beta1
+kind: LoadBalancerConfiguration
+metadata:
+  name: team-gateway
+  namespace: platform-tools
+spec:
+  scheme: internet-facing
+  ipAddressType: dualstack
+  # Explicit public subnet IDs — tag-based selection cannot be used here because
+  # the Gateway API path does not support ResolveViaTagSelector via LBC.
+  # Subnet IDs come from the VPC built by Story 1.1 (vpc-0b565376502e4e506).
+  loadBalancerSubnets:
+    - identifier: subnet-0f4c64bc15861e726
+    - identifier: subnet-00e3df91a56eb9515
+    - identifier: subnet-0c159a3734c968b6d

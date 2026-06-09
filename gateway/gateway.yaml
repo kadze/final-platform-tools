@@ -9,16 +9,19 @@ metadata:
   name: team-gateway
   namespace: platform-tools
   annotations:
-    # Internet-facing ALB in the public dual-stack subnets built by Story 1.1
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    # dualstack: ALB gets both IPv4 and IPv6 addresses, can reach IPv6 pods directly
-    alb.ingress.kubernetes.io/ip-address-type: dualstack
     # ip target type is required to route to IPv6 pod addresses
     alb.ingress.kubernetes.io/target-type: ip
-    # Auto-discover public LB-only subnets by tag set by Story 1.1
-    alb.ingress.kubernetes.io/subnets: tag:kubernetes.io/role/elb=1
 spec:
   gatewayClassName: alb
+  # parametersRef links this Gateway to the LoadBalancerConfiguration CR.
+  # Without this, LBC ignores the CR and falls back to ResolveViaDiscovery,
+  # which picks up the wrong (private/IPv6-only) subnets and fails with
+  # "insufficient available IP addresses" even when public subnets have 16k+ IPs.
+  infrastructure:
+    parametersRef:
+      group: gateway.k8s.aws
+      kind: LoadBalancerConfiguration
+      name: team-gateway
   listeners:
     - name: http
       port: 80
