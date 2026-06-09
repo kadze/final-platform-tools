@@ -10,7 +10,11 @@ region: us-east-1
 vpcId: vpc-0b565376502e4e506 #TODO-ash
 
 # Enable Gateway API support (requires Gateway API CRDs installed first)
-enableGatewayAPI: true
+# enableGatewayAPI is not a valid key — Gateway API is controlled via featureGates
+# ALBGatewayAPI is true by default in v3.x, but we make it explicit here
+controllerConfig:
+  featureGates:
+    ALBGatewayAPI: true
 
 serviceAccount:
   create: true

@@ -101,6 +101,8 @@ If your app has an annotation not listed here, open a platform ticket before mig
 
 You do not need to change anything in your app or Service for IPv6. The ALB uses `ip` target type, which means it routes directly to pod IPs. Since pods on this cluster get IPv6 addresses, the ALB reaches them over IPv6. Your Service type (`ClusterIP`, `NodePort`, etc.) is irrelevant to this — the ALB bypasses kube-proxy entirely.
 
+**Where `ip` target type comes from:** it is set as the controller-wide default in the LBC Helm values (`defaultTargetType: ip`). You will not see it in your HTTPRoute manifest — there is no annotation or CRD field to set. The controller applies it automatically to every target group it creates. Do not add a `TargetGroupConfiguration` to override this unless you have a specific reason.
+
 The one thing to verify: your Service's `selector` must match your pod labels correctly. The ALB controller registers pod IPs into the target group directly.
 
 ---
