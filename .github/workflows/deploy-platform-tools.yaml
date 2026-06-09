@@ -43,7 +43,8 @@ jobs:
         run: kubectl apply -f ingress-nginx/deploy.yaml
 
       - name: Install Gateway API CRDs
-        run: kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+        # v1.5.0 required — LBC v3.3.0 imports sigs.k8s.io/gateway-api v1.5.0
+        run: kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standard-install.yaml
 
       - name: Install AWS Load Balancer Controller
         run: |
@@ -54,6 +55,14 @@ jobs:
             --values aws-load-balancer-controller/values.yaml \
             --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=${{ vars.ALB_CONTROLLER_IAM_ROLE_ARN }} \
             --wait
+
+      - name: Create GatewayClass
+        # LBC does not auto-create GatewayClass. controllerName in v3.x is gateway.k8s.aws/alb
+        run: kubectl apply -f gateway/gatewayclass.yaml
+
+      - name: Deploy LoadBalancerConfiguration
+        # Must be applied before the Gateway — Gateway's parametersRef points to this CR
+        run: kubectl apply -f gateway/loadbalancer-configuration.yaml
 
       - name: Deploy shared Gateway
         run: kubectl apply -f gateway/gateway.yaml
