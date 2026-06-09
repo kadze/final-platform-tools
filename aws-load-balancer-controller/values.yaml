@@ -2,12 +2,12 @@
 # Installed into kube-system via deploy-platform-tools.yaml
 # IAM role ARN is injected at deploy time via --set from the GHA workflow
 
-clusterName: temporary-eks-cluster-dev
+clusterName: eks-dev #TODO-ash
 region: us-east-1
 
 # vpcId is required for the controller to discover subnets
 # Fill in from Story 1.1 VPC output
-vpcId: VPC_ID_PLACEHOLDER
+vpcId: vpc-0b565376502e4e506 #TODO-ash
 
 # Enable Gateway API support (requires Gateway API CRDs installed first)
 enableGatewayAPI: true
