@@ -15,6 +15,9 @@ spec:
   securityGroupSelectorTerms:
     - tags:
         karpenter.sh/discovery: "${CLUSTER_NAME}"
+  # Temporary: required because eks-dev has public subnets only.
+  # Remove this when switching to the permanent cluster with private subnets + NAT gateway.
+  associatePublicIPAddress: true
   tags:
     team: ubuntu
     environment: dev
