@@ -1,0 +1,19 @@
+namespace: logging
+
+image: docker.elastic.co/elasticsearch/elasticsearch
+imageTag: "8.13.0"
+
+replicas: 1
+storage: 10Gi
+
+resources:
+  requests:
+    memory: "1Gi"
+    cpu: "500m"
+  limits:
+    memory: "2Gi"
+    cpu: "1000m"
+
+javaOpts: "-Xms512m -Xmx512m"
+
+credentialsSecret: elasticsearch-credentials

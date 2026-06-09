@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: {{ .Values.namespace }}
+data:
+  fluent.conf: |
+    <source>
+      @type tail
+      path /var/log/containers/*.log
+      pos_file /var/log/fluentd-containers.log.pos
+      tag kubernetes.*
+      read_from_head true
+      <parse>
+        @type cri
+      </parse>
+    </source>
+
+    <filter kubernetes.**>
+      @type kubernetes_metadata
+    </filter>
+
+    <match kubernetes.**>
+      @type copy
+
+      <store>
+        @type elasticsearch
+        host "#{ENV['FLUENT_ELASTICSEARCH_HOST']}"
+        port "#{ENV['FLUENT_ELASTICSEARCH_PORT']}"
+        scheme "#{ENV['FLUENT_ELASTICSEARCH_SCHEME']}"
+        user "#{ENV['FLUENT_ELASTICSEARCH_USER']}"
+        password "#{ENV['FLUENT_ELASTICSEARCH_PASSWORD']}"
+        logstash_format true
+        logstash_prefix kubernetes-logs
+        include_tag_key true
+        type_name _doc
+        <buffer>
+          flush_interval 5s
+        </buffer>
+      </store>
+
+      <store>
+        @type s3
+        s3_bucket "#{ENV['S3_BUCKET_NAME']}"
+        s3_region "#{ENV['S3_BUCKET_REGION']}"
+        path "#{ENV['S3_PATH']}"
+        s3_object_key_format %{path}%{time_slice}_%{index}.%{file_extension}
+        time_slice_format %Y%m%d%H
+        <buffer time>
+          timekey 3600
+          timekey_wait 10m
+          chunk_limit_size 256m
+        </buffer>
+      </store>
+    </match>

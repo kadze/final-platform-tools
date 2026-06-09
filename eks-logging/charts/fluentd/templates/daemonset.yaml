@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: fluentd
+spec:
+  selector:
+    matchLabels:
+      app: fluentd
+  template:
+    metadata:
+      labels:
+        app: fluentd
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      containers:
+        - name: fluentd
+          image: {{ .Values.image }}:{{ .Values.imageTag }}
+          env:
+            - name: FLUENT_ELASTICSEARCH_HOST
+              value: {{ .Values.elasticsearch.host | quote }}
+            - name: FLUENT_ELASTICSEARCH_PORT
+              value: {{ .Values.elasticsearch.port | quote }}
+            - name: FLUENT_ELASTICSEARCH_SCHEME
+              value: {{ .Values.elasticsearch.scheme | quote }}
+            - name: FLUENT_ELASTICSEARCH_USER
+              value: {{ .Values.elasticsearch.user | quote }}
+            - name: FLUENT_ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.elasticsearch.credentialsSecret }}
+                  key: password
+            - name: S3_BUCKET_NAME
+              value: {{ .Values.s3.bucket | quote }}
+            - name: S3_BUCKET_REGION
+              value: {{ .Values.s3.region | quote }}
+            - name: S3_PATH
+              value: {{ .Values.s3.path | quote }}
+          resources:
+            requests:
+              memory: {{ .Values.resources.requests.memory | quote }}
+              cpu: {{ .Values.resources.requests.cpu | quote }}
+            limits:
+              memory: {{ .Values.resources.limits.memory | quote }}
+              cpu: {{ .Values.resources.limits.cpu | quote }}
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: fluentd-config
+              mountPath: /fluentd/etc
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: fluentd-config
+          configMap:
+            name: fluentd-config

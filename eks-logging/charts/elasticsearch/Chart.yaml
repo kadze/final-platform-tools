@@ -1,0 +1,6 @@
+apiVersion: v2
+name: elasticsearch
+description: Elasticsearch - distributed search and analytics engine for the EFK logging stack
+type: application
+version: 0.1.0
+appVersion: "8.13.0"

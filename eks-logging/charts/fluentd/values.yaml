@@ -1,0 +1,28 @@
+namespace: logging
+
+image: fluent/fluentd-kubernetes-daemonset
+imageTag: "v1.16-debian-elasticsearch8-1"
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+elasticsearch:
+  host: "elasticsearch.logging.svc.cluster.local"
+  port: "9200"
+  scheme: "http"
+  user: "elastic"
+  credentialsSecret: elasticsearch-credentials
+
+s3:
+  bucket: "383585068161-state-bucket-dev"
+  region: "us-east-1"
+  path: "logs/"
+
+serviceAccount:
+  name: fluentd
+  iamRoleArn: ""

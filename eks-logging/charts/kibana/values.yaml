@@ -1,0 +1,25 @@
+namespace: logging
+
+image: docker.elastic.co/kibana/kibana
+imageTag: "8.13.0"
+
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1Gi"
+    cpu: "500m"
+
+elasticsearch:
+  host: "http://elasticsearch.logging.svc.cluster.local:9200"
+  user: "elastic"
+  credentialsSecret: elasticsearch-credentials
+
+host: "kibana-ubuntu-dev.312ubuntu.com"
+allowedSourceIP: "127.0.0.1/32"
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  tls: []
