@@ -18,6 +18,8 @@ There is one shared Gateway for the team, managed by the platform:
 
 Your HTTPRoute attaches to it via `parentRefs`. You do not create or modify the Gateway yourself.
 
+`allowedRoutes.namespaces.from: All` is a deliberate choice over `ReferenceGrant` — all app namespaces belong to the same team, so the extra cross-namespace grant mechanism adds operational overhead with no meaningful security benefit at this stage.
+
 ---
 
 ## Hostname contract
