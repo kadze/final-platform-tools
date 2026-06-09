@@ -20,5 +20,5 @@ serviceAccount:
 
 # IPv6-primary cluster: pods have IPv6 addresses.
 # ALB uses ip target type to reach pods directly — required for IPv6 pod targets.
+# IPv6 works automatically when VPC/subnets have IPv6 CIDRs and ip target type is used.
 defaultTargetType: ip
-enableIpv6: true

@@ -8,9 +8,6 @@ kind: Gateway
 metadata:
   name: team-gateway
   namespace: platform-tools
-  annotations:
-    # ip target type is required to route to IPv6 pod addresses
-    alb.ingress.kubernetes.io/target-type: ip
 spec:
   gatewayClassName: alb
   # parametersRef links this Gateway to the LoadBalancerConfiguration CR.
