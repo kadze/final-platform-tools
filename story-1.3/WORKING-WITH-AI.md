@@ -218,7 +218,7 @@ The GitHub Actions workflow also needs a step to apply the LBC CRD before the Ga
 | Gateway API CRDs were v1.2.1, controller requires v1.5.0 | Upgrade CRDs in workflow to match pinned controller version |
 | `LoadBalancerConfiguration` CRD not created by workflow | Add manifest + apply step before Gateway |
 | Gateway `spec.infrastructure.parametersRef` missing | Required in v3.x for LBC to be used — add to `gateway.yaml` |
-| `alb.ingress.kubernetes.io/subnets` annotation ignored for Gateway | Not read in v3.x Gateway path; subnet config belongs in LBC only |
+| `alb.ingress.kubernetes.io/subnets` annotation ignored for Gateway | Not read in v3.x Gateway path; use `loadBalancerSubnetsSelector` in the LBC |
 
 ### Time spent debugging
 
