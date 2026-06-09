@@ -34,13 +34,14 @@ jobs:
             echo "Deploy Karpenter steps go here"
       - name: Deploy EKS Logging
         run: |
-            helm upgrade --install efk ./eks-logging/charts/efk \
-              --namespace logging \
-              --create-namespace \
-              --values ./eks-logging/charts/efk/values.yaml \
-              --values ./eks-logging/values/${ENVIRONMENT_STAGE}.yaml \
-              --wait \
-              --timeout 5m
+            for chart in elasticsearch fluentd kibana; do
+              helm upgrade --install $chart ./eks-logging/charts/$chart \
+                --namespace logging \
+                --create-namespace \
+                --values ./eks-logging/values/${ENVIRONMENT_STAGE}.yaml \
+                --wait \
+                --timeout 5m
+            done
       - name: Finalize Deployment
         run: |
             echo "Final deployment steps and cleanup"

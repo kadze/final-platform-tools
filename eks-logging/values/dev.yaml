@@ -18,3 +18,7 @@ kibana:
 s3:
   bucket: "383585068161-state-bucket-dev"
   region: "us-east-1"
+
+fluentd:
+  serviceAccount:
+    iamRoleArn: "arn:aws:iam::383585068161:role/fluentd-s3-role-25c-ubuntu"

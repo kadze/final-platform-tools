@@ -1,11 +1,9 @@
+locals {
+  oidc_issuer = "oidc.eks.us-east-1.amazonaws.com/id/C518D5CB1A79656432948AE2225FA67D"
+}
 
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
-
-
-data "aws_eks_cluster" "cluster" {
-  name = "temporary-eks-cluster-dev"
-}
 
 resource "aws_iam_role" "fluentd_s3" {
   name = "fluentd-s3-role-25c-ubuntu"
@@ -16,12 +14,12 @@ resource "aws_iam_role" "fluentd_s3" {
       {
         Effect = "Allow"
         Principal = {
-          Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer, "https://", "")}"
+          Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${local.oidc_issuer}"
         }
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "${replace(data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer, "https://", "")}:sub" = "system:serviceaccount:logging:fluentd"
+            "${local.oidc_issuer}:sub" = "system:serviceaccount:logging:fluentd"
           }
         }
       }
@@ -29,9 +27,9 @@ resource "aws_iam_role" "fluentd_s3" {
   })
 
   tags = {
-    Team        = "25c-ubuntu"
-    Story       = "2.2"
-    ManagedBy   = "terraform"
+    Team      = "25c-ubuntu"
+    Story     = "2.2"
+    ManagedBy = "terraform"
   }
 }
 
@@ -45,9 +43,9 @@ resource "aws_iam_policy" "fluentd_s3" {
       {
         Effect = "Allow"
         Action = [
-          "s3:PutObject",     
-          "s3:GetObject",    
-          "s3:ListBucket"     
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket"
         ]
         Resource = [
           "arn:aws:s3:::383585068161-state-bucket-dev",
@@ -57,7 +55,6 @@ resource "aws_iam_policy" "fluentd_s3" {
     ]
   })
 }
-
 
 resource "aws_iam_role_policy_attachment" "fluentd_s3" {
   role       = aws_iam_role.fluentd_s3.name
