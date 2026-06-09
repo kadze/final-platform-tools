@@ -15,8 +15,6 @@ permissions:
 env:
   AWS_REGION: "us-east-1"
   ENVIRONMENT_STAGE: "dev"
-  CLUSTER_NAME: "eks-dev"
-  KARPENTER_CONTROLLER_ROLE_ARN: "arn:aws:iam::383585068161:role/karpenter-controller-eks-dev"
 
 jobs:
   deploy-platform-tools:
@@ -41,13 +39,13 @@ jobs:
         run: aws eks update-kubeconfig --name eks-${ENVIRONMENT_STAGE} --region $AWS_REGION
 
       # Add deployment steps for each tool below
-      - name: Deploy ingress-nginx controller
-        run: kubectl apply -f ingress-nginx/deploy.yaml
+      # - name: Deploy ingress-nginx controller
+      #   run: kubectl apply -f ingress-nginx/deploy.yaml
 
       - name: Deploy Karpenter
-        # env:
-        #   CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
-        #   KARPENTER_CONTROLLER_ROLE_ARN: ${{ vars.KARPENTER_CONTROLLER_ROLE_ARN }}
+        env:
+          CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
+          KARPENTER_CONTROLLER_ROLE_ARN: ${{ vars.KARPENTER_CONTROLLER_ROLE_ARN }}
         run: |
           helm registry logout public.ecr.aws || true
           helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter \

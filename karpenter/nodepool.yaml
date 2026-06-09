@@ -20,7 +20,7 @@ spec:
         # Match Story 1.1 ASG instance family for consistent workload sizing
         - key: node.kubernetes.io/instance-type
           operator: In
-          values: ["t3.medium", "t3.large", "t3a.medium", "t3a.large"]
+          values: ["t3.medium", "t3a.medium"]
   limits:
     cpu: "20"
     memory: 80Gi
