@@ -28,3 +28,5 @@ override.tf.json
 terraform.rc
 
 .DS_Store
+karpenter-test.yaml
+CLAUDE.md
