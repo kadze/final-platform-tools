@@ -14,6 +14,7 @@ metadata:
   labels:
     team: {{ .Values.team }}
     app: versus
+    release: monitoring
 spec:
   # Matches teammate10's Versus backend Service by label
   # teammate10 must add label app: versus-backend to his K8s Service
@@ -25,7 +26,7 @@ spec:
     matchNames:
       - versus
   endpoints:
-    - port: http
+    - port: metrics
       path: /metrics
       interval: 30s
       relabelings:

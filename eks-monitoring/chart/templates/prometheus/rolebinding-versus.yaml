@@ -1,0 +1,23 @@
+# =============================================================================
+# eks-monitoring/chart/templates/prometheus/rolebinding-versus.yaml
+#
+# RoleBinding — grants Prometheus permission to discover Services
+# in the versus namespace for scraping.
+# =============================================================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-versus
+  namespace: versus
+  labels:
+    team: {{ .Values.team }}
+    release: monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: monitoring-kube-prometheus-prometheus
+    namespace: {{ .Values.namespace }}
