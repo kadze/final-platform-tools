@@ -81,6 +81,18 @@ to discover Services. The proshop namespace had no RoleBinding so Prometheus cou
 see the Service at all. Fixed by creating a RoleBinding manually — this should be 
 added to the Helm chart as a template.
 
+**Incident 7 — Wrong label name in SLO queries: status_code vs status**
+Claude wrote SLO PromQL queries using `status_code` as the label name. teammate2's 
+prom-client implementation uses `status` instead. Claude did not check the actual 
+metric labels before writing the queries — discovered by querying Prometheus directly 
+and reading the real label names. All four SLO recording rules had to be updated.
+
+**Incident 8 — method label assumed but not present**
+Claude wrote SLO queries filtering by `method="POST"` for the orders endpoint. 
+teammate2's prom-client setup does not emit a method label at all. Claude assumed a 
+standard prom-client setup without verifying what labels teammate2 actually exposed. 
+Removed the method filter from all four recording rules.
+
 *[Add more incidents here as the project progresses]*
 
 ---
