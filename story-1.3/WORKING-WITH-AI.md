@@ -220,6 +220,20 @@ The GitHub Actions workflow also needs a step to apply the LBC CRD before the Ga
 | Gateway `spec.infrastructure.parametersRef` missing | Required in v3.x for LBC to be used — add to `gateway.yaml` |
 | `alb.ingress.kubernetes.io/subnets` annotation ignored for Gateway | Not read in v3.x Gateway path; use `loadBalancerSubnetsSelector` in the LBC |
 
+### Subnet discovery: switched to tag-based after parametersRef was working
+
+After the Gateway reached `PROGRAMMED: True` with explicit subnet IDs in `loadBalancerSubnets`, we switched to `loadBalancerSubnetsSelector` (tag-based). This was the original design intent — Story 1.1 tags public subnets with `kubernetes.io/role/elb=1` precisely so consumers don't need to hardcode IDs.
+
+```yaml
+loadBalancerSubnetsSelector:
+  kubernetes.io/role/elb:
+    - "1"
+```
+
+This works correctly because `parametersRef` is present — the controller reads the LBC and uses `ResolveViaTagSelector`. Without `parametersRef` the same tag selector was tried earlier and failed (LBC was ignored entirely). The selector is `map[string][]string` — tag key maps to a list of accepted values.
+
+Gateway remained `PROGRAMMED: True` after the switch. ✅
+
 ### Time spent debugging
 
 ~8 hours across two sessions. The key lessons:
@@ -227,3 +241,50 @@ The GitHub Actions workflow also needs a step to apply the LBC CRD before the Ga
 1. **Read the gotchas first.** Gotcha #2 (CRD channel/version pairing) directly called out this class of problem.
 2. **Test the Ingress path as a diagnostic.** The moment Ingress worked and Gateway didn't, the problem became "what does Gateway do differently?" instead of "why don't my subnets work?"
 3. **The error message is a red herring.** "Insufficient available IP addresses" does not mean the subnets lack IPs — it means the resolver code path reached the IP check with the wrong subnets or wrong resolver path.
+
+---
+
+## §8 — First live HTTPRoute: proshop cutover test (2026-06-09)
+
+### What we deployed
+
+Applied `cutover-prs/3.3-proshop/httproute.yaml` — the first real HTTPRoute attached to the Gateway. Proshop was already running in the `proshop` namespace with both services matching the manifest (`proshop-frontend:80`, `proshop-backend:5000`).
+
+### New IAM error: `DescribeListenerAttributes`
+
+Immediately after HTTPRoute was created (`Accepted: True`, `ResolvedRefs: True`), the controller hit a new 403:
+
+```
+Failed deploy model due to operation error Elastic Load Balancing v2: DescribeListenerAttributes,
+AccessDenied: elasticloadbalancing:DescribeListenerAttributes
+```
+
+This action was missing from the IRSA policy. It's required when deploying listener rules via Gateway API — not needed for the `PROGRAMMED: True` state (which only creates the ALB), but required when configuring listeners for HTTPRoutes.
+
+**Fix:** Added `elasticloadbalancing:DescribeListenerAttributes` to `modules/alb-controller-irsa/resources.tf` in the infra repo, applied via `terraform apply -target=module.alb_controller_irsa`. Then restarted the LBC pods to pick up the refreshed STS credentials.
+
+### End-to-end result
+
+```bash
+curl -H "Host: proshop-ubuntu-dev.312ubuntu.com" \
+  http://k8s-platform-teamgate-41e6b79100-558783643.us-east-1.elb.amazonaws.com/
+# → 200
+
+curl -H "Host: proshop-ubuntu-dev.312ubuntu.com" \
+  http://k8s-platform-teamgate-41e6b79100-558783643.us-east-1.elb.amazonaws.com/api/products
+# → 200
+```
+
+Both frontend and backend routes are working end-to-end through the Gateway API ALB. ✅
+
+### Updated infrastructure gaps table
+
+| Gap | Fix applied |
+|---|---|
+| `elasticloadbalancing:DescribeListenerAttributes` missing from IRSA policy | Added to `modules/alb-controller-irsa/resources.tf`, terraform applied |
+
+### What's still pending
+
+- HTTPRoutes for Versus (3.1) and Weather (3.5) not yet applied
+- DNS (`312ubuntu.com`) not pointed at the new ALB — currently testing with `curl -H "Host: ..."` only
+- Ingress-nginx still running in parallel — cutover not complete until DNS is switched and old Ingress objects deleted
