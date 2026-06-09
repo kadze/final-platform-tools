@@ -288,3 +288,43 @@ Both frontend and backend routes are working end-to-end through the Gateway API 
 - HTTPRoutes for Versus (3.1) and Weather (3.5) not yet applied
 - DNS (`312ubuntu.com`) not pointed at the new ALB — currently testing with `curl -H "Host: ..."` only
 - Ingress-nginx still running in parallel — cutover not complete until DNS is switched and old Ingress objects deleted
+
+---
+
+## §9 — Manifest corrections found via external review (2026-06-09)
+
+After the live test, the manifests were reviewed against the actual Helm chart and docs. Several errors were found that Helm silently ignores — no error, no warning, the key just has no effect.
+
+### `enableGatewayAPI: true` — non-existent key
+
+`enableGatewayAPI` does not exist in the LBC Helm chart. Helm accepted it silently. Gateway API was working only because `ALBGatewayAPI` is **true by default in v3.x** — not because of this key.
+
+**Fix:** replaced with the correct path:
+
+```yaml
+controllerConfig:
+  featureGates:
+    ALBGatewayAPI: true
+```
+
+Lesson: always verify Helm keys with `helm show values <chart>`. Training-data recall is not reliable for chart field names.
+
+### `enableIpv6: true` — also non-existent
+
+Same class of error. IPv6 is not enabled via a flag — it works automatically when VPC/subnets have IPv6 CIDRs and `ip` target type is used. Removed.
+
+### `alb.ingress.kubernetes.io/target-type: ip` annotation on Gateway — ignored
+
+This Ingress annotation is not read in the v3.x Gateway API path. The `ip` target type comes from `defaultTargetType: ip` in `values.yaml`. The annotation was dead weight giving false confidence. Removed from `gateway/gateway.yaml`.
+
+### LBC chart version not pinned
+
+`helm upgrade --install` without `--version` installs latest on every run. Fixed by pinning `--version 3.3.0` — the version verified to work end-to-end.
+
+### `TargetGroupConfiguration` is NOT required
+
+Verified against current docs: `TargetGroupConfiguration` is an optional CRD for advanced customization (health check overrides, legacy target groups). Basic routing with `ip` target type works via `defaultTargetType: ip` in values alone. No app team needs to create this CRD.
+
+### Key takeaway
+
+All three of these errors (`enableGatewayAPI`, `enableIpv6`, `target-type` annotation) were written by AI from training-data recall without verifying against the actual chart or docs. They were caught only by external review. For any Helm values file, run `helm show values <chart>` and cross-check every key before shipping.
