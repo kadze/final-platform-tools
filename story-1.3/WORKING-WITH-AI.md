@@ -328,3 +328,22 @@ Verified against current docs: `TargetGroupConfiguration` is an optional CRD for
 ### Key takeaway
 
 All three of these errors (`enableGatewayAPI`, `enableIpv6`, `target-type` annotation) were written by AI from training-data recall without verifying against the actual chart or docs. They were caught only by external review. For any Helm values file, run `helm show values <chart>` and cross-check every key before shipping.
+
+## §10 — Additional notes from manual work
+
+### Claude misread the IAM role origin
+
+At one point Claude described the IRSA IAM role as "manually created" or "ad-hoc." I corrected this: the role is defined in `modules/alb-controller-irsa/` in the infra repo — it is Terraform-managed, purpose-built for this story. The confusion came from Claude seeing the role referenced without the full module context. Lesson: when handing AI a resource reference, also hand it the code that creates it, otherwise it fills the gap with a wrong assumption.
+
+### Cost tagging requirement from teammate5
+
+Mid-story, teammate5 sent a message explaining how resources must be tagged for cost tracking. This was an external requirement that arrived while I was already writing Terraform. I had to go back and add the required tags to the IRSA module resources. Lesson: in a real team, tagging conventions should be defined before anyone writes infrastructure code — discovering them mid-story means rework.
+
+### Workflow and planning before testing
+
+Before running a single command, I drafted the IAM permissions in the infra repo and the resource structure in platform-tools, wrote the README, and wrote down the steps in a notebook. Only then I started testing. This turned out to be worth it: having the plan written down meant I could compare what I expected to happen against what actually happened, which made debugging in §6 and §7 much faster.
+
+### S3 state file key and GITHUB_REF_NAME
+
+I needed the Terraform state key to include the branch name so feature branch runs do not overwrite the main state. I did not know the right GitHub Actions variable to use — Claude pointed me to `GITHUB_REF_NAME`, which resolves to the short branch name (e.g. `feature/1.3-ingress-to-Gateway-API`). Simple lookup, but good to have on record.
+
