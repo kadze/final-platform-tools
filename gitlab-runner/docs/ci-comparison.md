@@ -44,7 +44,7 @@ Neither system has static AWS credentials stored anywhere.
 
 **GitHub Actions** is the simpler choice for most teams. No runner infrastructure to manage, tight GitHub integration, and the free tier covers a lot of usage. Good default if the team is already on GitHub and doesn't need jobs to run inside a private network.
 
-**GitLab CI** makes more sense if the organisation is already on GitLab, or if you need runners inside a private VPC (e.g. jobs that talk to internal databases or private endpoints). The Kubernetes executor gives full pod-level isolation per job, and you have complete control over the runner environment — custom images, resource limits, node selectors, all configurable in `values.yaml` and the runner config.
+**GitLab CI** makes more sense if the organization is already on GitLab, or if you need runners inside a private VPC (e.g. jobs that talk to internal databases or private endpoints). The Kubernetes executor gives full pod-level isolation per job, and you have complete control over the runner environment — custom images, resource limits, node selectors, all configurable in `values.yaml` and the runner config.
 
 ## Why Both in This Project
 
