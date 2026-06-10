@@ -22,6 +22,10 @@ spec:
         - name: fluentd
           image: {{ .Values.image }}:{{ .Values.imageTag }}
           env:
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: FLUENT_ELASTICSEARCH_HOST
               value: {{ .Values.elasticsearch.host | quote }}
             - name: FLUENT_ELASTICSEARCH_PORT

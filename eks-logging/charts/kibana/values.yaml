@@ -1,6 +1,6 @@
 namespace: logging
 
-image: docker.elastic.co/kibana/kibana
+image: kibana
 imageTag: "8.13.0"
 
 resources:
@@ -12,9 +12,9 @@ resources:
     cpu: "500m"
 
 elasticsearch:
-  host: "http://elasticsearch.logging.svc.cluster.local:9200"
-  user: "elastic"
-  credentialsSecret: elasticsearch-credentials
+  host: "http://elasticsearch:9200"
+  user: "kibana_system"
+  credentialsSecret: kibana-credentials
 
 host: "kibana-ubuntu-dev.312ubuntu.com"
 allowedSourceIP: "127.0.0.1/32"

@@ -32,6 +32,8 @@ spec:
                   key: password
             - name: SERVER_NAME
               value: {{ .Values.host | quote }}
+            - name: SERVER_HOST
+              value: "::"
             - name: XPACK_SECURITY_ENABLED
               value: "true"
           resources:

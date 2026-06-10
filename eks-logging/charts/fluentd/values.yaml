@@ -1,7 +1,7 @@
 namespace: logging
 
-image: fluent/fluentd-kubernetes-daemonset
-imageTag: "v1.16-debian-elasticsearch8-1"
+image: 383585068161.dkr.ecr.us-east-1.amazonaws.com/fluentd-efk-25c-ubuntu
+imageTag: "v1.16-s3-es"
 
 resources:
   requests:
