@@ -1,0 +1,14 @@
+# Throwaway — proves IRSA->Route53->LE->Secret. Delete after it reaches Ready=True
+# with issuer 'Fake LE'. Do NOT keep in the cluster.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cert-manager-test
+  namespace: platform-tools
+spec:
+  secretName: cert-manager-test-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-staging
+  dnsNames:
+    - test.312ubuntu.com

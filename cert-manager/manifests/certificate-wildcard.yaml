@@ -1,0 +1,14 @@
+# Hits LE PRODUCTION. Do NOT apply until certificate-test validates clean on staging —
+# prod rate limits can lock the domain for days.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-312ubuntu
+  namespace: platform-tools
+spec:
+  secretName: wildcard-312ubuntu-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - "*.312ubuntu.com"

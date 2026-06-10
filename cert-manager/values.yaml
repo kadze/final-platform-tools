@@ -1,0 +1,45 @@
+# cert-manager values for eks-dev.
+# Role ARN annotation is injected at deploy time via --set in the workflow
+# (so the ARN stays out of git and can differ per environment later).
+
+crds:
+  enabled: true
+
+serviceAccount:
+  create: true
+  name: cert-manager
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+webhook:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+cainjector:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+startupapicheck:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
