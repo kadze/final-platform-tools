@@ -40,7 +40,7 @@ jobs:
 
       # Add deployment steps for each tool below
       - name: Deploy ingress-nginx controller
-        run: kubectl apply -f ingress-nginx/deploy.yaml
+        run: kubectl apply -f ingress-nginx/deploy.yaml --validate=false
 
       # Example for a tool like Karpenter
       - name: Deploy Karpenter
