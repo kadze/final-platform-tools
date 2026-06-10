@@ -16,6 +16,7 @@ alertmanager:
   persistence:
     enabled: true
     size: 2Gi
+    storageClassName: gp2 
 
   resources:
     requests:
@@ -24,3 +25,6 @@ alertmanager:
     limits:
       cpu: 100m
       memory: 128Mi
+      
+  extraArgs:
+    cluster.listen-address: ""

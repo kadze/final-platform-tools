@@ -1,7 +1,6 @@
-# Regenerate by running: helm dependency update eks-monitoring/grafana
 dependencies:
 - name: grafana
   repository: https://grafana.github.io/helm-charts
   version: 8.5.2
-digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-generated: "2026-06-05T00:00:00.000000000Z"
+digest: sha256:10a1a2b44cb0a6955c3111c6cb9f7b702b4516628ebc038a4919b8b3ec24a1e2
+generated: "2026-06-09T17:28:49.395238-05:00"

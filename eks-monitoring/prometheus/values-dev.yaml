@@ -14,6 +14,6 @@ kube-prometheus-stack:
               requests:
                 storage: 10Gi
       externalLabels:
-        cluster: eks-dev
+        cluster: ubuntu-dev-cluster
         team: ubuntu
         environment: dev

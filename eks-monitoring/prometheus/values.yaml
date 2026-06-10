@@ -42,7 +42,7 @@ kube-prometheus-stack:
       serviceMonitorNamespaceSelector: {}
       serviceMonitorSelector: {}
       externalLabels:
-        cluster: eks-dev
+        cluster: ubuntu-dev-cluster
         team: ubuntu
         environment: dev
       additionalScrapeConfigs: []
