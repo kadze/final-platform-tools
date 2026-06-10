@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: broken-auth-service
+  namespace: demo
+  labels:
+    app: auth-service
+spec:
+  containers:
+    - name: auth-service
+      image: busybox
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "auth-service starting - version 2.1.0"
+          echo "INFO: Loading config from CONFIG_PATH=/etc/config/app.yaml"
+          echo "ERROR: Config file not found at /etc/config/app.yaml"
+          echo "ERROR: Falling back to defaults - JWT_SECRET is empty"
+          sleep 2
+          while true; do
+            echo "ERROR: [$(date -u +%Y-%m-%dT%H:%M:%SZ)] POST /api/auth/login - 500 Internal Server Error - JWT_SECRET not configured"
+            echo "ERROR: [$(date -u +%Y-%m-%dT%H:%M:%SZ)] POST /api/auth/refresh - 500 Internal Server Error - JWT_SECRET not configured"
+            echo "WARN:  [$(date -u +%Y-%m-%dT%H:%M:%SZ)] Rate limit approaching - 847 errors in last 60s"
+            sleep 3
+          done
+      resources:
+        limits:
+          memory: "64Mi"
+          cpu: "100m"
+  restartPolicy: Always

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: broken-payment-service
+  namespace: demo
+  labels:
+    app: payment-service
+spec:
+  containers:
+    - name: payment-service
+      image: busybox
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "Starting payment-service..."
+          echo "ERROR: Required env var DATABASE_URL is not set"
+          echo "FATAL: Cannot connect to database - exiting"
+          exit 1
+      resources:
+        limits:
+          memory: "64Mi"
+          cpu: "100m"
+  restartPolicy: Always
