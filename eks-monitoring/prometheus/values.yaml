@@ -25,24 +25,24 @@ kube-prometheus-stack:
   # -------------------------------------------------------------------------
   # Prometheus
   # -------------------------------------------------------------------------
+  prometheusOperator:
+    admissionWebhooks:
+      enabled: false
+    tls:
+      enabled: false
+
   prometheus:
     enabled: true
     prometheusSpec:
       scrapeInterval: 30s
       evaluationInterval: 30s
-      retention: 15d
-      storageSpec:
-        volumeClaimTemplate:
-          spec:
-            accessModes: ["ReadWriteOnce"]
-            resources:
-              requests:
-                storage: 20Gi
+      retention: 7d
+      storageSpec: {}
       serviceMonitorSelectorNilUsesHelmValues: false
       serviceMonitorNamespaceSelector: {}
       serviceMonitorSelector: {}
       externalLabels:
-        cluster: temporary-eks-cluster-dev
+        cluster: eks-dev
         team: ubuntu
         environment: dev
       additionalScrapeConfigs: []
