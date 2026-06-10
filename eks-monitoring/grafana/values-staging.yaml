@@ -3,14 +3,8 @@
 # Staging environment overrides (not deployed yet — defined for completeness)
 # =============================================================================
 
-customIngress:
-  host: "grafana.ubuntu-staging.<DOMAIN>"
-  annotations:
-    nginx.ingress.kubernetes.io/whitelist-source-range: "YOUR_STAGING_IP/32"
-  tls:
-    - secretName: grafana-ubuntu-staging-tls
-      hosts:
-        - grafana.ubuntu-staging.<DOMAIN>
+gateway:
+  host: "grafana-ubuntu-staging.312ubuntu.com"
 
 grafana:
   resources:
