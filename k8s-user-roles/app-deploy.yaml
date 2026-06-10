@@ -1,0 +1,40 @@
+# ClusterRole: app-deploy
+# Used by: App-*-EKSDeploy-Role-dev (GHA CI/CD roles per app)
+# Mapped via EKS Access Entry in terraform-infra-25c-ubuntu/modules/iam/main.tf
+#
+# Permissions: deploy workloads (apply manifests) — cannot read secrets or exec into pods
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: app-deploy
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "configmaps", "namespaces", "events",
+               "persistentvolumeclaims", "serviceaccounts"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# secrets, pods/exec, pods/attach — intentionally omitted
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: app-deploy-binding
+subjects:
+- kind: Group
+  name: app-deploy-group
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: app-deploy
+  apiGroup: rbac.authorization.k8s.io
