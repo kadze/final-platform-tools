@@ -1,106 +1,188 @@
-# EKS Logging — EFK Stack
+# eks-logging — EFK Stack
 
-Centralised logging for the 25c-ubuntu EKS cluster using Elasticsearch, Fluentd, and Kibana.
+EFK (Elasticsearch + Fluentd + Kibana) logging stack for the team's EKS cluster. Replaces managed logging services to eliminate per-GB ingestion costs and keep log data inside our own AWS account.
+
+**What you gain:** no ingestion billing, full control over retention and schema, logs never leave our account.  
+**What you give up:** you own upgrades, storage management, and backup verification. No built-in alerting. No auto-scaling. If Elasticsearch's PVC is lost, the ES data is gone — mitigated by dual output to S3 (see [S3 backup](#s3-backup)).
+
+---
 
 ## Architecture
 
 ```
 EKS Nodes
   └── Fluentd DaemonSet (one pod per node)
-        ├── tails /var/log/containers/*.log (CRI format)
+        ├── tails /var/log/containers/*.log
+        ├── parses with @type cri (containerd format)
         ├── enriches with Kubernetes metadata
-        ├──► Elasticsearch (StatefulSet, port 9200)
-        │       └── Kibana (Deployment, port 5601)
-        │             └── ingress-nginx → kibana-ubuntu-dev.312ubuntu.com
-        └──► S3 bucket (383585068161-state-bucket-dev/logs/)
+        ├──► Elasticsearch StatefulSet (port 9200)
+        │       └── Kibana Deployment → ingress-nginx → kibana-ubuntu-dev.312ubuntu.com
+        └──► S3 bucket: 383585068161-state-bucket-dev/logs/ (redundant backup)
 ```
 
-**Why EFK over a managed service?** Full control over retention and parsing rules, no per-GB ingestion cost, and S3 backup is included at negligible cost. Trade-off: we own the ops burden.
+Fluentd runs as a DaemonSet — one pod per node — so every node's container logs are collected. It uses `@type cri` to parse containerd log format (EKS default). Both outputs run simultaneously via `@type copy`: Elasticsearch for live querying, S3 for durability.
 
-## Chart structure
+---
 
-Three independent Helm charts, each owning one component:
+## Repo structure
 
-| Chart | Kind | Purpose |
-|---|---|---|
-| `charts/elasticsearch` | StatefulSet | Stores and indexes log data |
-| `charts/fluentd` | DaemonSet | Collects and ships logs from every node |
-| `charts/kibana` | Deployment | Web UI for querying and visualising logs |
+```
+eks-logging/
+├── charts/
+│   ├── elasticsearch/   — StatefulSet + Service
+│   ├── fluentd/         — DaemonSet, ConfigMap, ServiceAccount, ClusterRole, ClusterRoleBinding
+│   └── kibana/          — Deployment, Service, Ingress
+├── fluentd/
+│   └── Dockerfile       — custom image with both ES + S3 plugins
+├── iam/
+│   ├── fluentd-s3-role.tf
+│   └── providers.tf
+├── demo/
+│   ├── scenario-1-crashloop.yaml
+│   └── scenario-2-error-spike.yaml
+└── values/
+    ├── dev.yaml
+    ├── staging.yaml
+    └── production.yaml
+```
 
-## Prerequisites
+Each chart is independent and deployed separately. The `values/` directory holds per-environment overrides applied on top of each chart's defaults.
 
-1. EKS cluster running (Story 1.1)
-2. `logging` namespace:
-   ```bash
-   kubectl create namespace logging
-   ```
-3. Elasticsearch credentials secret (manual until Story 1.5):
-   ```bash
-   kubectl create secret generic elasticsearch-credentials \
-     --from-literal=password=<your-password> \
-     -n logging
-   ```
-4. ingress-nginx controller installed (Story 1.3 will migrate to Gateway API)
+---
 
-## Deployment
+## Deploy
 
-The GitHub Actions workflow (`deploy-platform-tools.yaml`) handles this automatically on push. To deploy manually:
+**Prerequisites:**
+- `kubectl` connected to `ubuntu-dev-cluster`
+- AWS credentials with ECR read + S3 write access
+- Helm 3
+
+**Before first deploy**, create the credentials secret manually (Story 1.5 will replace this with Secrets Manager CSI):
 
 ```bash
-ENVIRONMENT_STAGE=dev
+kubectl create namespace logging
+kubectl create secret generic elasticsearch-credentials \
+  --from-literal=password=<password> \
+  -n logging
+kubectl create secret generic kibana-credentials \
+  --from-literal=password=<kibana-system-password> \
+  -n logging
+```
 
+Then set the `kibana_system` password in Elasticsearch:
+
+```bash
+kubectl port-forward -n logging svc/elasticsearch 9200:9200 &
+curl -u elastic:<password> -X POST http://localhost:9200/_security/user/kibana_system/_password \
+  -H 'Content-Type: application/json' \
+  -d '{"password":"<kibana-system-password>"}'
+```
+
+**Deploy all three charts:**
+
+```bash
 for chart in elasticsearch fluentd kibana; do
-  helm upgrade --install $chart ./charts/$chart \
-    --namespace logging \
-    --create-namespace \
-    --values ./values/${ENVIRONMENT_STAGE}.yaml \
-    --wait \
-    --timeout 5m
+  helm upgrade --install $chart ./eks-logging/charts/$chart \
+    --namespace logging --create-namespace \
+    --values ./eks-logging/values/dev.yaml
 done
 ```
 
-## Key config decisions
+**CI/CD:** the `deploy-platform-tools.yaml` GitHub Actions workflow runs this automatically on push to `feature/**` and `main`.
 
-### CRI log parser
-EKS uses containerd, which writes logs in CRI format — not Docker's JSON format. Fluentd is configured with `@type cri` in `charts/fluentd/templates/configmap.yaml`. Using `@type json` here would silently fail to parse every log line.
+---
 
-### Dual output: Elasticsearch + S3
-Fluentd ships to both destinations simultaneously via `@type copy`. Elasticsearch provides real-time search via Kibana. S3 provides long-term retention and audit trail — logs land in `s3://383585068161-state-bucket-dev/logs/` hourly.
+## How to reach Kibana
 
-### IRSA — no static AWS credentials
-Fluentd authenticates to S3 using IAM Roles for Service Accounts (IRSA). The IAM role (`fluentd-s3-role-25c-ubuntu`) trusts only the `system:serviceaccount:logging:fluentd` service account via the cluster's OIDC provider. No AWS access keys are stored anywhere. The IAM role is managed in `iam/fluentd-s3-role.tf`.
+- **URL:** `http://kibana-ubuntu-dev.312ubuntu.com`
+- **Login:** use the `elastic` superuser credentials from AWS Secrets Manager (`elasticsearch-credentials`)
+- **Access restriction:** ingress-nginx allowlists by source IP — set `kibana.allowedSourceIP` in `values/dev.yaml`
+- **Note:** Kibana ingress is currently managed by ingress-nginx. Story 1.3 (Gateway API) will take this over.
 
-### Kibana access control
-Kibana is restricted to a single source IP via ingress-nginx `whitelist-source-range`. Set `kibana.allowedSourceIP` in the environment values file.
+---
 
-## Verifying the S3 backup
+## S3 backup
 
-After deployment, confirm logs are reaching S3:
+Fluentd ships to both Elasticsearch and S3 simultaneously. This is the primary durability mechanism — Elasticsearch runs on a single PVC, so if that storage is lost, S3 is the only surviving copy.
+
+- **Bucket:** `s3://383585068161-state-bucket-dev/logs/`
+- **Write cadence:** files are written hourly (1hr buffer window + 10min flush wait). Allow up to 70 minutes after first deploy for the first object to appear.
+
+Verify the backup is working:
 
 ```bash
-aws s3 ls s3://383585068161-state-bucket-dev/logs/
+aws s3 ls s3://383585068161-state-bucket-dev/logs/ --recursive
 aws s3 cp s3://383585068161-state-bucket-dev/logs/<file> /tmp/sample.log
 cat /tmp/sample.log
 ```
 
-Fluentd buffers by hour (`timekey 3600`) with a 10-minute wait before flushing, so allow up to 70 minutes after first deploy for the first S3 object to appear.
+---
+
+## IAM / Security
+
+Fluentd authenticates to S3 using IRSA (IAM Roles for Service Accounts) — no static credentials anywhere.
+
+- **IAM role:** `arn:aws:iam::383585068161:role/fluentd-s3-role-25c-ubuntu`
+- **Trust policy:** scoped to `system:serviceaccount:logging:fluentd` via the cluster's OIDC provider — no other pod can assume this role
+- **Policy grants:** `s3:PutObject`, `s3:GetObject`, `s3:ListBucket` on `383585068161-state-bucket-dev` only
+- **Elasticsearch credentials:** stored in both a Kubernetes secret (`elasticsearch-credentials`) and AWS Secrets Manager under the same name — ready for Story 1.5's CSI driver
+- **Kibana uses `kibana_system`:** Elasticsearch 8.x forbids the `elastic` superuser for Kibana connections. Kibana authenticates as `kibana_system`, a built-in service account with scoped permissions
+
+---
 
 ## Diagnostic skill
 
-A Claude Code skill for investigating log anomalies lives at `.claude/skills/log-diagnostic.md`. Invoke it with a service name and time range to get a structured hypothesis.
+**Location:** `.claude/skills/log-diagnostic.md`
 
+A Claude Code runbook that investigates log anomalies on demand. Give it a service name and time range; it fetches logs from Elasticsearch or `kubectl`, identifies patterns, and proposes a root-cause hypothesis.
+
+**Constraints:**
+- Read-only — it will not delete, restart, or patch any resource
+- Operator must confirm the hypothesis before taking any remediation action
+
+**Demo scenarios** (live on the cluster in the `demo` namespace):
+
+| File | Service | Scenario |
+|---|---|---|
+| `demo/scenario-1-crashloop.yaml` | `payment-service` | CrashLoopBackOff — exits on startup due to missing `DATABASE_URL` |
+| `demo/scenario-2-error-spike.yaml` | `auth-service` | Error rate spike — continuous HTTP 500s due to missing `JWT_SECRET` config |
+
+Run a diagnostic:
+
+```bash
+# Scenario 1
+kubectl get pods -n demo -l app=payment-service
+kubectl logs broken-payment-service -n demo --previous
+
+# Scenario 2
+kubectl logs broken-auth-service -n demo --since=30m | grep ERROR | wc -l
+kubectl logs broken-auth-service -n demo --since=30m | tail -20
 ```
-/log-diagnostic service=payments-api time="last 30 minutes"
-```
 
-The skill is **read-only** — it will not restart or delete any resource.
+---
 
-## Known limitations and future work
+## Why EFK over a managed product
 
-| Limitation | Resolution |
-|---|---|
-| Kibana uses ingress-nginx | Switch to Gateway API once Story 1.3 publishes HTTPRoute conventions |
-| Elasticsearch credentials injected manually | Story 1.5 (Secrets Manager CSI) will handle injection |
-| No TLS on Kibana in dev | Story 1.5 (cert-manager) will add HTTPS |
-| Single Elasticsearch replica in dev | Production values use 2 replicas |
-| OIDC URL hardcoded in Terraform | Dynamic lookup works once the cluster is accessible |
+We evaluated CloudWatch Logs, Datadog, and managed OpenSearch before choosing self-hosted EFK.
+
+| Factor | EFK (self-hosted) | Managed alternative |
+|---|---|---|
+| Cost | Fixed EC2 + EBS cost only | Per-GB ingestion billing — unpredictable at scale |
+| Data residency | Stays in our AWS account | May leave our account depending on vendor |
+| Retention control | Full control, set per index | Vendor-defined tiers |
+| Schema | Free-form, custom fields | Often opinionated |
+| Ops burden | We own upgrades and storage | Vendor handles it |
+| Alerting | Requires Elastalert or similar | Usually built-in |
+| Auto-scaling | Manual | Built-in |
+
+The main risk with self-hosted is losing logs if Elasticsearch storage fails. We mitigate this with dual output to S3 — Elasticsearch is a query layer, not the log store of record.
+
+---
+
+## Dependencies
+
+| Story | Owner | Impact |
+|---|---|---|
+| 1.1 — Cluster | Andrii P. | Cluster this stack runs on |
+| 1.3 — Gateway API | Andrii S. | Kibana external access — currently using ingress-nginx as workaround |
+| 1.5 — cert-manager + Secrets CSI | teammate7.dan | HTTPS for Kibana + clean secret injection via Secrets Manager |
