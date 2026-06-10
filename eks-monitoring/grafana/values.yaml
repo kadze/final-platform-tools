@@ -8,14 +8,9 @@
 team: ubuntu
 namespace: monitoring
 
-# Custom ingress config — the subchart's built-in ingress is disabled below.
-# templates/ingress.yaml reads these values.
-customIngress:
-  host: "grafana.ubuntu-dev.312ubuntu.com"   # overridden per environment
-  ingressClassName: nginx
-  annotations:
-    nginx.ingress.kubernetes.io/whitelist-source-range: "0.0.0.0/0"
-  tls: []
+# Gateway block
+gateway:
+  host: "grafana-ubuntu-dev.312ubuntu.com"
 
 # ---------------------------------------------------------------------------
 # grafana subchart values

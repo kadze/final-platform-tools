@@ -3,12 +3,7 @@
 # Dev environment overrides
 # =============================================================================
 
-# Ingress config for grafana.ubuntu-dev.<DOMAIN>
-# Replace <DOMAIN> with the actual team domain once confirmed with PM
-customIngress:
+# Gateway
+
+gateway:
   host: "grafana-ubuntu-dev.312ubuntu.com"
-  annotations:
-    # Restrict to your home public IP for the demo
-    # Replace with your actual public IP: curl ifconfig.me
-    nginx.ingress.kubernetes.io/whitelist-source-range: "107.206.79.148/32"
-  tls: []   # no TLS in dev — cert-manager (story 1.5) adds this later
