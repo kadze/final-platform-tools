@@ -1,0 +1,67 @@
+# external-dns values for eks-dev (Story 1.5 cluster services).
+# Release is installed by the workflow with `-n external-dns --create-namespace`,
+# so the namespace is intentionally not set here.
+# The IRSA role ARN is injected at deploy time via --set in the workflow:
+#   --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=<arn>
+# keeping the ARN (and account ID) out of git.
+
+# Route53 — cluster lives in a shared AWS account, AWS is the only provider in play.
+provider:
+  name: aws
+
+# Watch only Gateway API HTTPRoutes. The chart's default sources (service, ingress)
+# silently produce zero records in our Gateway-API-only traffic plane (Story 1.3),
+# which is the most common foot-gun for this setup.
+sources:
+  - gateway-httproute
+
+# Scope Gateway/HTTPRoute watching to the namespace where team-gateway lives
+# (Story 1.3). Tightens blast radius and avoids touching any future Gateway
+# objects another team might create in other namespaces.
+gatewayNamespace: platform-tools
+
+# `sync` so deleting an HTTPRoute also deletes its Route53 records.
+# The chart default `upsert-only` would orphan records in the shared zone.
+policy: sync
+
+# Ownership registry — TXT records tag each managed record with our cluster ID,
+# so a second external-dns (staging, another team) sharing 312ubuntu.com cannot
+# overwrite or garbage-collect ours.
+registry: txt
+txtOwnerId: "25c-ubuntu-dev-cluster"
+
+# Hard scope to our delegated zone. The shared account hosts other zones we
+# must never touch; the domain filter is the first line of defence.
+domainFilters:
+  - 312ubuntu.com
+
+# Second line of defence: pin to the exact hosted zone ID. Chart 1.20.0 has no
+# dedicated key for this, so we pass the external-dns flag through extraArgs.
+extraArgs:
+  zone-id-filter: Z09469413H61XF9MA5W6E
+
+# ServiceAccount name is fixed because the IRSA trust policy hardcodes
+# system:serviceaccount:external-dns:external-dns. Annotations intentionally
+# omitted — the role-arn annotation is injected at deploy time via --set
+# (see header comment).
+serviceAccount:
+  create: true
+  name: external-dns
+
+# Explicit AWS region for the SDK. EKS pods would resolve this from IMDS, but
+# pinning it removes one source of "works on my node" surprises.
+env:
+  - name: AWS_REGION
+    value: us-east-1
+  - name: AWS_DEFAULT_REGION
+    value: us-east-1
+
+# Modest footprint — one zone, a handful of HTTPRoutes; the controller is mostly
+# idle between 1-minute reconcile ticks.
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
