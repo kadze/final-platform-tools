@@ -1,0 +1,48 @@
+name: 'Workflow - Deploy ArgoCD'
+
+on:
+  push:
+    branches:
+      - feature/**
+      - main
+    paths:
+      - 'argocd/**'
+      - '.github/workflows/deploy-argocd.yaml'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: "us-east-1"
+  ENVIRONMENT_STAGE: "dev"
+
+jobs:
+  deploy-argocd:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.IAM_ROLE }}
+          role-session-name: GitHubActionsRoleSession
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to EKS - update kubeconfig
+        run: aws eks update-kubeconfig --name eks-dev --region $AWS_REGION
+
+      - name: Add ArgoCD Helm repo
+        run: |
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo update
+
+      - name: Install / upgrade ArgoCD
+        run: |
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd \
+            --create-namespace \
+            --values argocd/values.yaml \
+            --wait

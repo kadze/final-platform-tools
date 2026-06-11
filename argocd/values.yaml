@@ -1,0 +1,12 @@
+global:
+  domain: argocd-ubuntu-dev.312ubuntu.com
+
+configs:
+  params:
+    server.insecure: true
+
+server:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: argocd-ubuntu-dev.312ubuntu.com
