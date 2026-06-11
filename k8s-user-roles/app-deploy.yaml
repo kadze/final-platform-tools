@@ -8,8 +8,13 @@ kind: ClusterRole
 metadata:
   name: app-deploy
 rules:
+# pods and namespaces: read-only (create on pods grants exec, delete on namespaces is destructive)
 - apiGroups: [""]
-  resources: ["pods", "services", "endpoints", "configmaps", "namespaces", "events",
+  resources: ["pods", "namespaces"]
+  verbs: ["get", "list", "watch"]
+# workload support resources: full CRUD
+- apiGroups: [""]
+  resources: ["services", "endpoints", "configmaps", "events",
                "persistentvolumeclaims", "serviceaccounts"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups: ["apps"]

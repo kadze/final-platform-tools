@@ -3,8 +3,12 @@ kind: ClusterRole
 metadata:
   name: devops-access
 rules:
+# namespaces: read-only (delete is destructive)
 - apiGroups: [""]
-  resources: ["pods", "services", "endpoints", "configmaps", "namespaces", "events", "persistentvolumeclaims"]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "configmaps", "events", "persistentvolumeclaims"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups: [""]
   resources: ["pods/log", "pods/portforward", "pods/exec"]
