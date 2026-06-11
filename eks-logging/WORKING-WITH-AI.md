@@ -44,6 +44,18 @@ Claude used the full FQDN `elasticsearch.logging.svc.cluster.local` as the Elast
 
 `ubuntu-dev-cluster` is IPv6-only. Claude's default ingress-nginx setup creates a Classic ELB, which uses IPv4 to health-check the backend nodes. On an IPv6-only cluster this fails completely — all instances show `OutOfService`. Had to reinstall ingress-nginx with an NLB (`aws-load-balancer-type: nlb`) and `ipFamilyPolicy: SingleStack` with `ipFamilies: [IPv6]`. Claude initially tried the Classic ELB path and didn't know the cluster was IPv6-only until I checked the node IPs.
 
+### 8. IAM role ARN not reaching the ServiceAccount annotation
+
+`dev.yaml` had the ARN nested under `fluentd.serviceAccount.iamRoleArn`, but the Helm template reads `.Values.serviceAccount.iamRoleArn` — one level up. The annotation was always rendered as an empty string, so IRSA never kicked in. Fluentd was silently using the node's EC2 role instead of the dedicated S3 role. Only caught by reading `kubectl get serviceaccount fluentd -n logging -o yaml` and seeing the annotation was blank.
+
+### 9. IRSA trust policy pointed at the wrong cluster
+
+The IAM role was created when we were using `eks-dev`. When we switched to `ubuntu-dev-cluster`, the trust policy still had eks-dev's OIDC ID (`C518D5CB...`). AWS rejected every token with `AccessDenied: Not authorized to perform sts:AssumeRoleWithWebIdentity`. Fixed by getting ubuntu-dev-cluster's OIDC ID and updating both the trust policy and `fluentd-s3-role.tf` to match (`287337B7769634D2DD2BA62AD053165D`).
+
+### 10. Fluentd permission denied on position file
+
+Fluentd tracks which log lines it has already read using a position file at `/var/log/fluentd-containers.log.pos` on the host filesystem. The host `/var/log` is owned by root. Fluentd was running as a non-root user and got `Errno::EACCES - Permission denied`. Fixed by adding `securityContext: runAsUser: 0` to the DaemonSet pod spec — necessary for any DaemonSet that reads from or writes to the host filesystem.
+
 ---
 
 ## 3. What I verified myself
@@ -71,6 +83,8 @@ Claude used the full FQDN `elasticsearch.logging.svc.cluster.local` as the Elast
 **The diagnostic skill's most important constraint is what it can't do.** Read-only is a deliberate design decision, not a limitation. The skill's job is to surface evidence and propose a hypothesis. A human confirms before acting. Automated remediation without confirmation — deleting pods, rolling back deployments — is dangerous and belongs in a different category of tooling with much more safeguarding.
 
 **Claude is fast at structure and boilerplate, but it doesn't know your cluster.** It doesn't know what runtime your nodes use, whether your cluster is IPv4 or IPv6, what storage classes are available, or what version of Elasticsearch you're connecting to. Every generated output is a starting point. Deploying without reading it first is how things break silently.
+
+**Switching clusters resets your assumptions.** IAM trust policies, OIDC IDs, and security contexts that worked on one cluster may silently fail on another. Always verify the ServiceAccount annotation and check `kubectl logs` immediately after switching.
 
 ---
 
