@@ -5,9 +5,11 @@
 clusterName: ubuntu-dev-cluster #TODO-ash
 region: us-east-1
 
-# Shield endpoint is IPv4-only and unreachable from IPv6-only nodes — disable to avoid
-# 5-minute timeout (10 retries) eating the reconcile context budget before ALB is created.
+# Shield, WAF, and WAFv2 endpoints are IPv4-only and unreachable from IPv6-only nodes.
+# Disable all three to avoid multi-minute timeouts blocking ALB provisioning.
 enableShield: false
+enableWaf: false
+enableWafv2: false
 
 # Use regional ECR instead of public.ecr.aws — nodes are IPv6-only with no NAT
 image:
