@@ -32,7 +32,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to EKS - update kubeconfig
-        run: aws eks update-kubeconfig --name eks-dev --region $AWS_REGION --role-arn ${{ vars.IAM_ROLE }}
+        run: aws eks update-kubeconfig --name eks-dev --region $AWS_REGION
 
       - name: Add ArgoCD Helm repo
         run: |
