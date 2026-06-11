@@ -4,9 +4,12 @@ metadata:
   name: kibana
   namespace: {{ .Values.namespace }}
   annotations:
-    nginx.ingress.kubernetes.io/whitelist-source-range: {{ .Values.allowedSourceIP | quote }}
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/inbound-cidrs: {{ .Values.allowedSourceIP | quote }}
 spec:
-  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  ingressClassName: alb
   rules:
     - host: {{ .Values.host }}
       http:
