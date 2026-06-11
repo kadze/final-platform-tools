@@ -93,6 +93,34 @@ teammate2's prom-client setup does not emit a method label at all. Claude assume
 standard prom-client setup without verifying what labels teammate2 actually exposed. 
 Removed the method filter from all four recording rules.
 
+**Incident 9 — Cluster name not updated in all files**
+When switching from the temporary cluster (`eks-dev`) to the permanent cluster 
+(`ubuntu-dev-cluster`), Claude missed that the cluster name existed in multiple 
+files: the workflow, values-dev.yaml, values-staging.yaml, values-prod.yaml, and 
+values.yaml. Had to grep across the repo to find all occurrences and fix them 
+one by one.
+
+**Incident 10 — IPv6 cluster: Alertmanager gossip mesh crash**
+Claude did not anticipate that Alertmanager's gossip clustering (memberlist) 
+requires a private IPv4 address to advertise. The new permanent cluster 
+(`ubuntu-dev-cluster`) is IPv6-only — Alertmanager crashed immediately with 
+"no private IP found." Fix: add `extraArgs: cluster.listen-address: ""` to 
+disable clustering. Claude should have flagged this as a known IPv6 gotcha 
+before deploying.
+
+**Incident 11 — StorageClass not set as default on new cluster**
+Alertmanager PVC could not bind because gp2 StorageClass was not set as the 
+default on the new cluster. Claude did not check StorageClass availability 
+before deploying a chart with persistence enabled. Fix: 
+`kubectl patch storageclass gp2 -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'`
+
+**Incident 12 — Gateway API CRDs not installed**
+Claude replaced the Grafana ingress-nginx Ingress with a Gateway API HTTPRoute 
+(following Story 1.3's conventions) without first verifying that the Gateway API 
+CRDs were installed on the cluster. Helm failed with "no matches for kind HTTPRoute." 
+Gateway API deployment is blocked on Andrii S. deploying his gateway setup to 
+ubuntu-dev-cluster first.
+
 *[Add more incidents here as the project progresses]*
 
 ---

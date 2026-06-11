@@ -3,17 +3,12 @@
 # Production environment overrides (not deployed yet — defined for completeness)
 # =============================================================================
 
-kube-prometheus-stack:
-  prometheus:
-    prometheusSpec:
-      retention: 30d
-      storageSpec:
-        volumeClaimTemplate:
-          spec:
-            resources:
-              requests:
-                storage: 50Gi
-      externalLabels:
-        cluster: ubuntu-dev-cluster
-        team: ubuntu
-        environment: prod
+retention: 30d
+
+storage:
+  size: 50Gi
+
+externalLabels:
+  cluster: ubuntu-dev-cluster
+  team: ubuntu
+  environment: prod

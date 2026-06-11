@@ -3,17 +3,12 @@
 # Staging environment overrides (not deployed yet — defined for completeness)
 # =============================================================================
 
-kube-prometheus-stack:
-  prometheus:
-    prometheusSpec:
-      retention: 15d
-      storageSpec:
-        volumeClaimTemplate:
-          spec:
-            resources:
-              requests:
-                storage: 20Gi
-      externalLabels:
-        cluster: ubuntu-dev-cluster
-        team: ubuntu
-        environment: staging
+retention: 15d
+
+storage:
+  size: 20Gi
+
+externalLabels:
+  cluster: ubuntu-dev-cluster
+  team: ubuntu
+  environment: staging

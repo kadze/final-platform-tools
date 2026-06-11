@@ -38,9 +38,12 @@ jobs:
       - name: Login to EKS - update kubeconfig
         run: aws eks update-kubeconfig --name ubuntu-dev-cluster --region $AWS_REGION
 
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.14.0
+
       # Add deployment steps for each tool below
-      - name: Deploy ingress-nginx controller
-        run: kubectl apply -f ingress-nginx/deploy.yaml --validate=false
 
       # Example for a tool like Karpenter
       - name: Deploy Karpenter
@@ -55,10 +58,8 @@ jobs:
       # EKS Monitoring — Prometheus (deploys first: registers Prometheus Operator CRDs)
       - name: Deploy Prometheus
         run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
-          helm dependency update eks-monitoring/prometheus
           helm upgrade --install monitoring eks-monitoring/prometheus \
             --namespace monitoring \
             --create-namespace \
@@ -86,7 +87,6 @@ jobs:
         run: |
           helm repo add grafana https://grafana.github.io/helm-charts
           helm repo update
-          helm dependency update eks-monitoring/grafana
           helm upgrade --install grafana eks-monitoring/grafana \
             --namespace monitoring \
             --create-namespace \

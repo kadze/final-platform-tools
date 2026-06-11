@@ -3,7 +3,5 @@
 # Dev environment overrides
 # =============================================================================
 
-# Gateway
-
 gateway:
   host: "grafana-ubuntu-dev.312ubuntu.com"
