@@ -15,6 +15,8 @@ spec:
         app: fluentd
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      securityContext:
+        runAsUser: 0
       tolerations:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
