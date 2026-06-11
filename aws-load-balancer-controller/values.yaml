@@ -5,6 +5,10 @@
 clusterName: ubuntu-dev-cluster #TODO-ash
 region: us-east-1
 
+# Use regional ECR instead of public.ecr.aws — nodes are IPv6-only with no NAT
+image:
+  repository: 602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-load-balancer-controller
+
 # vpcId is required for the controller to discover subnets
 # Fill in from Story 1.1 VPC output
 vpcId: vpc-0d334d8b5fab0b7c0 #TODO-ash
