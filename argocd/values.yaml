@@ -9,6 +9,6 @@ server:
   ingress:
     enabled: true
     ingressClassName: nginx
-    hostname: argocd-ubuntu-dev.312ubuntu.com# argocd helm values for eks-dev
+    hostname: argocd-ubuntu-dev.312ubuntu.com
 # retrigger after granting cluster access
 # retry after policy propagation
