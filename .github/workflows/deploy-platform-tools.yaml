@@ -28,7 +28,7 @@ jobs:
           role-session-name: GitHubActionsRoleSession
           aws-region: ${{ env.AWS_REGION }}
       - name: Login to EKS - update kubeconfig
-        run: aws eks update-kubeconfig --name temporary-eks-cluster-${ENVIRONMENT_STAGE} --region $AWS_REGION
+        run: aws eks update-kubeconfig --name ubuntu-dev-cluster --region $AWS_REGION
       - name: Deploy ingress-nginx controller
         run: kubectl apply -f ingress-nginx/deploy.yaml
       - name: Deploy Karpenter
@@ -41,6 +41,7 @@ jobs:
         run: |
           kubectl apply -f k8s-user-roles/developer-readonly.yaml
           kubectl apply -f k8s-user-roles/devops-access.yaml
+          kubectl apply -f k8s-user-roles/app-deploy.yaml
       - name: Finalize Deployment
         run: |
             echo "Final deployment steps and cleanup"
