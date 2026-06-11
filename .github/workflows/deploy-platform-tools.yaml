@@ -39,8 +39,8 @@ jobs:
         run: aws eks update-kubeconfig --name ubuntu-${ENVIRONMENT_STAGE}-cluster --region $AWS_REGION
 
       # Add deployment steps for each tool below
-      - name: Deploy ingress-nginx controller
-        run: kubectl apply -f ingress-nginx/deploy.yaml
+      #- name: Deploy ingress-nginx controller
+      #  run: kubectl apply -f ingress-nginx/deploy.yaml
 
       - name: Install Gateway API CRDs
         # v1.5.0 required — LBC v3.3.0 imports sigs.k8s.io/gateway-api v1.5.0
