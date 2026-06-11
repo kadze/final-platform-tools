@@ -7,6 +7,17 @@ on:
     branches:
       - feature/**
       - main
+  workflow_dispatch:
+    inputs:
+      cluster_name:
+        description: 'EKS cluster to deploy to'
+        required: true
+        default: 'ubuntu-dev-cluster'
+        type: choice
+        options:
+          - ubuntu-dev-cluster
+          - eks-dev
+
 
 permissions:
   id-token: write
@@ -36,7 +47,9 @@ jobs:
 
       # Login to EKS, make sure to switch to the permanent cluster created with terraform once it's up
       - name: Login to EKS - update kubeconfig
-        run: aws eks update-kubeconfig --name ubuntu-dev-cluster --region $AWS_REGION
+        #  replace with this line the run after you have only one cluster aws eks update-kubeconfig --name ubuntu-dev-cluster --region $AWS_REGION
+        run: aws eks update-kubeconfig --name ${{ github.event.inputs.cluster_name || 'ubuntu-dev-cluster' }} --region $AWS_REGION
+       
 
       - name: Setup Helm
         uses: azure/setup-helm@v3
