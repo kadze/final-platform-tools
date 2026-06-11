@@ -1,0 +1,23 @@
+global:
+  namespace: logging
+
+elasticsearch:
+  replicas: 1
+  storage: 10Gi
+
+kibana:
+  host: "kibana-ubuntu-dev.312ubuntu.com"
+  allowedSourceIP: "174.62.135.239/32"
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/whitelist-source-range: "174.62.135.239/32"
+    tls: []
+
+s3:
+  bucket: "383585068161-state-bucket-dev"
+  region: "us-east-1"
+
+serviceAccount:
+  iamRoleArn: "arn:aws:iam::383585068161:role/fluentd-s3-role-25c-ubuntu"

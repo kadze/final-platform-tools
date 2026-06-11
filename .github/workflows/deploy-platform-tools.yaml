@@ -35,10 +35,10 @@ jobs:
       - name: Deploy EKS Logging
         run: |
             for chart in elasticsearch fluentd kibana; do
-              helm upgrade --install $chart ./eks-logging/charts/$chart \
+              helm upgrade --install $chart ./eks-logging/helm-${chart} \
                 --namespace logging \
                 --create-namespace \
-                --values ./eks-logging/values/${ENVIRONMENT_STAGE}.yaml \
+                --values ./eks-logging/helm-${chart}/values/${ENVIRONMENT_STAGE}-values.yaml \
                 --wait \
                 --timeout 5m
             done
