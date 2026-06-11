@@ -28,25 +28,54 @@ Fluentd runs as a DaemonSet — one pod per node — so every node's container l
 
 ```
 eks-logging/
-├── charts/
-│   ├── elasticsearch/   — StatefulSet + Service
-│   ├── fluentd/         — DaemonSet, ConfigMap, ServiceAccount, ClusterRole, ClusterRoleBinding
-│   └── kibana/          — Deployment, Service, Ingress
+├── helm-elasticsearch/
+│   ├── Chart.yaml
+│   ├── namespace.yaml
+│   ├── values.yaml
+│   ├── templates/
+│   │   ├── elasticsearch-statefulset.yaml
+│   │   └── elasticsearch-service.yaml
+│   └── values/
+│       ├── dev-values.yaml
+│       ├── staging-values.yaml
+│       └── prod-values.yaml
+├── helm-fluentd/
+│   ├── Chart.yaml
+│   ├── namespace.yaml
+│   ├── values.yaml
+│   ├── templates/
+│   │   ├── fluentd-daemonset.yaml
+│   │   ├── fluentd-configmap.yaml
+│   │   ├── fluentd-serviceaccount.yaml
+│   │   ├── fluentd-clusterrole.yaml
+│   │   └── fluentd-clusterrolebinding.yaml
+│   └── values/
+│       ├── dev-values.yaml
+│       ├── staging-values.yaml
+│       └── prod-values.yaml
+├── helm-kibana/
+│   ├── Chart.yaml
+│   ├── namespace.yaml
+│   ├── values.yaml
+│   ├── templates/
+│   │   ├── kibana-deployment.yaml
+│   │   ├── kibana-service.yaml
+│   │   └── kibana-ingress.yaml
+│   └── values/
+│       ├── dev-values.yaml
+│       ├── staging-values.yaml
+│       └── prod-values.yaml
 ├── fluentd/
 │   └── Dockerfile       — custom image with both ES + S3 plugins
 ├── iam/
 │   ├── fluentd-s3-role.tf
 │   └── providers.tf
-├── demo/
-│   ├── scenario-1-crashloop.yaml
-│   └── scenario-2-error-spike.yaml
-└── values/
-    ├── dev.yaml
-    ├── staging.yaml
-    └── production.yaml
+└── demo/
+    ├── scenario-1-crashloop.yaml
+    └── scenario-2-error-spike.yaml
 ```
 
-Each chart is independent and deployed separately. The `values/` directory holds per-environment overrides applied on top of each chart's defaults.
+Each chart is independent and deployed separately. Per-environment overrides live inside each chart under `values/` (e.g. `helm-elasticsearch/values/dev-values.yaml`).
 
 ---
 
@@ -82,9 +111,9 @@ curl -u elastic:<password> -X POST http://localhost:9200/_security/user/kibana_s
 
 ```bash
 for chart in elasticsearch fluentd kibana; do
-  helm upgrade --install $chart ./eks-logging/charts/$chart \
+  helm upgrade --install $chart ./eks-logging/helm-${chart} \
     --namespace logging --create-namespace \
-    --values ./eks-logging/values/dev.yaml
+    --values ./eks-logging/helm-${chart}/values/dev-values.yaml
 done
 ```
 
