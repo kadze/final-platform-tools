@@ -6,18 +6,34 @@ spec:
   # AL2023 is required for IPv6-primary clusters — AL2 has no IPv6 pod support
   amiSelectorTerms:
     - alias: al2023@latest
-  # Node IAM role name (not ARN) — Karpenter manages the instance profile automatically.
-  # Convention matches terraform-infra karpenter-iam module: karpenter-node-<cluster-name>
-  role: karpenter-node-${CLUSTER_NAME}
+  # Use a pre-provisioned instance profile (NOT `role`) so Karpenter never makes IAM
+  # API calls to create/manage the profile itself — IAM write permissions stay out of
+  # the controller role. The profile is created in the terraform-infra karpenter-iam
+  # module (aws_iam_instance_profile.karpenter_node): karpenter-node-<cluster-name>.
+  instanceProfile: karpenter-node-${CLUSTER_NAME}
   subnetSelectorTerms:
     - tags:
         karpenter.sh/discovery: "${CLUSTER_NAME}"
   securityGroupSelectorTerms:
     - tags:
         karpenter.sh/discovery: "${CLUSTER_NAME}"
-  # Temporary: required because eks-dev has public subnets only.
-  # Remove this when switching to the permanent cluster with private subnets + NAT gateway.
-  associatePublicIPAddress: true
+  # IMDSv2 required; hop limit 2 so pods (ebs-csi and any IRSA-less workload)
+  # can reach IMDS for node-role credentials.
+  metadataOptions:
+    httpEndpoint: enabled
+    httpTokens: required
+    httpPutResponseHopLimit: 2
+  # Encrypted gp3 root volume (20Gi), set explicitly. The Story 1.1 launch template
+  # defines no block device mapping (it inherits the AMI default, which is not
+  # guaranteed encrypted), so this is a deliberate hardening for Karpenter nodes —
+  # not a mirror of that template.
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 20Gi
+        volumeType: gp3
+        encrypted: true
+        deleteOnTermination: true
   tags:
     team: ubuntu
     environment: dev
