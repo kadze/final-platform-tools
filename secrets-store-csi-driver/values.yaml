@@ -1,0 +1,23 @@
+# secrets-store-csi-driver values for eks-dev.
+# Chart pinned at 1.6.0 under chart/secrets-store-csi-driver/.
+# Only non-defaults below; defaults (incl. modest CPU/mem requests of 50m/100Mi
+# on the driver and 10m/20Mi on the sidecars) are already conservative.
+
+# REQUIRED: installs the RBAC that lets the driver materialize a K8s Secret
+# from a SecretProviderClass.secretObjects block. Default is false; if left
+# off, env-var consumers see an EMPTY secret with NO CSI error — apps start
+# blind and crash at runtime. Key confirmed in this chart at values.yaml:218.
+syncSecret:
+  enabled: true
+
+# Enable secret rotation so a Secrets Manager update reaches the mounted FILE
+# and the synced K8s Secret (alpha feature; key at values.yaml:222).
+# IMPORTANT: rotation updates mounted files + synced Secrets, but env vars
+# injected via envFrom/env are evaluated at container start and DO NOT
+# auto-refresh — env-var consumers need a pod restart to pick up new values.
+enableSecretRotation: true
+
+# Poll interval for rotation (values.yaml:225). 2m keeps the freshness window
+# small without hammering the AWS API; the AWS provider caches per-pod so cost
+# stays bounded.
+rotationPollInterval: 2m

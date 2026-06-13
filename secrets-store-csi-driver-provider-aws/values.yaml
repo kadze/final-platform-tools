@@ -1,0 +1,18 @@
+# secrets-store-csi-driver-provider-aws values for eks-dev.
+# Chart pinned at 3.1.1 under chart/secrets-store-csi-driver-provider-aws/.
+# Defaults (50m/100Mi req=lim, port 8989, hostPath /var/run/secrets-store-csi-providers)
+# are appropriate; only the items below need overriding.
+
+# CRITICAL: this chart bundles the secrets-store-csi-driver as a CONDITIONAL
+# SUBCHART (see chart/.../Chart.yaml dependencies, default install: true).
+# We install the driver as its OWN Helm release (sibling component directory),
+# so the subchart MUST be disabled here to avoid double-installing the driver
+# (which would race on the same CSIDriver/DaemonSet objects).
+secrets-store-csi-driver:
+  install: false
+
+# Be explicit about the region instead of relying on IMDS lookup at boot.
+# Removes one IMDS round-trip per pod and avoids any region-detection
+# surprises on the IPv6-primary cluster (cluster is us-east-1).
+# Key confirmed in this chart at values.yaml:6.
+awsRegion: us-east-1

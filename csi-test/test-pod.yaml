@@ -1,0 +1,49 @@
+# THROWAWAY TEST ARTIFACT — single pod that consumes the csi-test
+# SecretProviderClass BOTH as a mounted file AND as an env var sourced from
+# the synced K8s Secret. Proves the mount-vs-env pattern in one place.
+# Not a deliverable app. Delete after Story 1.5 sign-off.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: csi-test
+  namespace: platform-tools
+  labels:
+    app: csi-test
+    purpose: throwaway-validation
+spec:
+  # PLACEHOLDER: must be a ServiceAccount in the platform-tools namespace
+  # annotated with eks.amazonaws.com/role-arn pointing at an IRSA role whose
+  # policy permits secretsmanager:GetSecretValue on the specific test secret
+  # (least privilege — do NOT reuse weather/proshop roles). Wire at test time.
+  serviceAccountName: PLACEHOLDER_TEST_SA
+  restartPolicy: Never
+  containers:
+    - name: probe
+      image: public.ecr.aws/docker/library/busybox:1.36
+      # Sleep so we can `kubectl exec` in to inspect both consumption paths.
+      command: ["sh", "-c", "sleep 3600"]
+      volumeMounts:
+        # File-mount path: contents of /mnt/secrets-store/test-secret will be
+        # the raw Secrets Manager secret value (per objectAlias above).
+        - name: csi-test-vol
+          mountPath: /mnt/secrets-store
+          readOnly: true
+      # Env-var path: only works because the SecretProviderClass declares
+      # secretObjects AND the driver has syncSecret.enabled=true. Note that
+      # envFrom reads at container START — a rotated secret will NOT update
+      # the env without a pod restart, even though the mounted file WILL
+      # update on the rotationPollInterval.
+      envFrom:
+        - secretRef:
+            name: csi-test-synced
+  volumes:
+    # IMPORTANT: the K8s Secret csi-test-synced is only created once a pod
+    # mounts the CSI volume — this volume is what triggers the provider call
+    # and the secretObjects sync. A pod that only does envFrom without this
+    # volume would fail to start (Secret not found).
+    - name: csi-test-vol
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: csi-test
