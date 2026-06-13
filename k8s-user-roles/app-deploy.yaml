@@ -2,7 +2,8 @@
 # Used by: App-*-EKSDeploy-Role-dev (GHA CI/CD roles per app)
 # Mapped via EKS Access Entry in terraform-infra-25c-ubuntu/modules/iam/main.tf
 #
-# Permissions: deploy workloads (apply manifests) — cannot read secrets or exec into pods
+# Permissions: deploy workloads (apply manifests) — cannot exec into pods
+# secrets added for Helm release management (Helm stores state in secrets)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -17,6 +18,10 @@ rules:
   resources: ["services", "endpoints", "configmaps", "events",
                "persistentvolumeclaims", "serviceaccounts"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# secrets: required by Helm to manage release state
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
 - apiGroups: ["apps"]
   resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
@@ -29,7 +34,7 @@ rules:
 - apiGroups: ["batch"]
   resources: ["jobs", "cronjobs"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-# secrets, pods/exec, pods/attach — intentionally omitted
+# pods/exec, pods/attach — intentionally omitted
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
