@@ -36,7 +36,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to EKS - update kubeconfig
-        run: aws eks update-kubeconfig --name ${{ vars.CLUSTER_NAME }} --region $AWS_REGION
+        run: aws eks update-kubeconfig --name ubuntu-${ENVIRONMENT_STAGE}-cluster --region $AWS_REGION
 
       # Add deployment steps for each tool below
       # - name: Deploy ingress-nginx controller
@@ -44,12 +44,9 @@ jobs:
 
       - name: Pre-warm Karpenter controller image into ECR pull-through cache
         run: |
-          # public.ecr.aws is IPv4-only with no VPC endpoint, so the no-NAT node that
-          # runs the controller can't import the image itself. Import it ONCE here on
-          # the runner, under the CI deploy role (the SharedGHATerraformRole, whose
-          # gha_terraform policy grants ecr:*). A pull-BY-TAG against the pull-through
-          # path triggers the server-side import; afterwards the cache is warm and the
-          # node only READS it, so no node role needs import permissions.
+          # No-NAT nodes can't reach public.ecr.aws (IPv4-only), so import the image into
+          # the pull-through cache here: a pull-by-tag triggers the server-side import and
+          # the node then only reads from the warm cache.
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
           aws ecr get-login-password --region "$AWS_REGION" \
@@ -58,16 +55,13 @@ jobs:
 
       - name: Deploy Karpenter
         env:
-          CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
-          KARPENTER_CONTROLLER_ROLE_ARN: ${{ vars.KARPENTER_CONTROLLER_ROLE_ARN }}
+          CLUSTER_NAME: ubuntu-${{ env.ENVIRONMENT_STAGE }}-cluster
         run: |
-          # The helm CHART is pulled here on the runner (public internet) — fine.
-          # The controller IMAGE runs on a no-NAT node that can't reach public.ecr.aws,
-          # so point it at the private ECR pull-through path. The pre-warm step above
-          # already imported it under the CI deploy role, so this is a cache-HIT read for
-          # the node. digest="" pulls by tag (the cached tag).
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          # Controller image read from the warm pull-through cache (by tag; digest unset below).
           PULLTHROUGH="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/ecr-public/karpenter/controller"
+          # Controller role ARN by convention: karpenter-controller-<cluster>
+          KARPENTER_CONTROLLER_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/karpenter-controller-${CLUSTER_NAME}"
 
           helm registry logout public.ecr.aws || true
           helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter \

@@ -15,7 +15,7 @@ The controller uses IRSA (IAM Roles for Service Accounts) via `karpenter-control
 
 The following must be in place in `terraform-infra-25c-ubuntu` before deploying:
 
-- `karpenter-controller-<cluster-name>` IAM role with required EC2, IAM, SQS, and SSM permissions
+- `karpenter-controller-<cluster-name>` IAM role with the Karpenter 1.12 controller permissions (EC2 incl. `ec2:DescribeInstanceStatus`, IAM, SQS, SSM)
 - `karpenter-node-<cluster-name>` IAM role with EKS worker node policies, **plus a pre-provisioned instance profile of the same name** — the EC2NodeClass references it via `instanceProfile` (not `role`), so Karpenter does not create or manage the profile itself
 - SQS interruption queue (`karpenter-<cluster-name>`)
 - EventBridge rules for spot interruption, rebalance, instance state, and health events
@@ -33,7 +33,11 @@ To deploy manually:
 # Pre-warm the controller image into the ECR pull-through cache. The no-NAT node
 # can't reach public.ecr.aws (IPv4-only, no VPC endpoint), so a pull BY TAG here
 # (under a role with ecr:*) triggers the server-side import; the node then only reads it.
+AWS_REGION="us-east-1"
+ENVIRONMENT_STAGE="dev"   # set per target environment: dev | staging | prod
+CLUSTER_NAME="ubuntu-${ENVIRONMENT_STAGE}-cluster"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+KARPENTER_CONTROLLER_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/karpenter-controller-${CLUSTER_NAME}"
 REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
 docker pull "${REGISTRY}/ecr-public/karpenter/controller:1.12.1"
@@ -65,23 +69,26 @@ kubectl get nodeclaims
 
 ## Issues
 
-### 1. GitHub Actions role missing EKS access entry — PENDING
-`SharedGHATerraformRole` was not in the EKS access entries, causing `kubectl`/`helm` to fail with "Kubernetes cluster unreachable". Added manually in the console as a temporary fix. Needs to be captured in Terraform in `terraform-infra-25c-ubuntu`.
+### 1. GitHub Actions role missing EKS access entry — RESOLVED on `ubuntu-dev-cluster`
+`SharedGHATerraformRole` was not in the EKS access entries, causing `kubectl`/`helm` to fail with "Kubernetes cluster unreachable" (added manually on `eks-dev`). On `ubuntu-dev-cluster` the workflow connects successfully, so the access entry is present; access entries are Terraform-managed there (Story 1.1, `access-entries.tf`). *Confirm `SharedGHATerraformRole` is included in that file.*
 
 ### 2. Karpenter controller missing IAM instance profile permissions — RESOLVED
 `karpenter-controller-<cluster-name>` was missing `iam:GetInstanceProfile` and related instance profile permissions. Fixed by adding them to the controller policy in `terraform-infra-25c-ubuntu`.
 
-### 3. Subnets missing discovery tag — PENDING
-Subnets were missing the `karpenter.sh/discovery: <cluster-name>` tag. Tagged manually as a temporary fix. Needs to be added via Terraform in `terraform-infra-25c-ubuntu` (VPC/subnet configuration).
+### 3. Subnets missing discovery tag — RESOLVED
+Subnets were missing the `karpenter.sh/discovery: <cluster-name>` tag (tagged manually on `eks-dev`). On `ubuntu-dev-cluster` the tags are Terraform-managed (Story 1.1) and confirmed present — the EC2NodeClass resolves all 3 subnets.
 
-### 4. Node security group missing discovery tag — PENDING
-The node security group was missing the `karpenter.sh/discovery: <cluster-name>` tag. Tagged manually as a temporary fix. Needs to be added via Terraform in `terraform-infra-25c-ubuntu`.
+### 4. Node security group missing discovery tag — RESOLVED
+The node security group was missing the `karpenter.sh/discovery: <cluster-name>` tag (tagged manually on `eks-dev`). On `ubuntu-dev-cluster` it's Terraform-managed (Story 1.1) and confirmed present — the EC2NodeClass resolves the nodes SG.
 
 ### 5. Nodes provisioned but not joining the cluster — RESOLVED (cluster migration)
 On `eks-dev` (public subnets only), Karpenter-provisioned nodes launched without public IPs and could not reach the EKS API endpoint. The temporary fix was `associatePublicIPAddress: true` on the EC2NodeClass. This is now **removed** — the new IPv6-primary cluster uses private subnets with an egress-only internet gateway, so nodes reach the API and the internet over IPv6 without public IPv4.
 
-### 6. SharedGHATerraformRole missing SQS and EventBridge permissions — PENDING
-Terraform plan failed because the role lacked `sqs:*` and `events:*` permissions needed to manage the Karpenter interruption queue and EventBridge rules. Added manually to the policy as a temporary fix. Needs to be captured in Terraform in `terraform-infra-25c-ubuntu`.
+### 6. SharedGHATerraformRole missing SQS and EventBridge permissions — RESOLVED
+Terraform plan failed because the role lacked `sqs:*` and `events:*` permissions needed to manage the Karpenter interruption queue and EventBridge rules. Added to the GHA policy in Terraform (`terraform-infra-25c-ubuntu`).
+
+### 7. Karpenter controller missing `ec2:DescribeInstanceStatus` — RESOLVED
+After the 1.4 → 1.12 upgrade the controller logged `UnauthorizedOperation` on `ec2:DescribeInstanceStatus` (used for instance health-check / node-repair; non-blocking for provisioning). Added to the `karpenter-controller-<cluster-name>` policy in Terraform and restarted the controller.
 
 ## Resources
 
