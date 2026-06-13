@@ -4,15 +4,20 @@
 #
 # Permissions: deploy workloads (apply manifests) — cannot exec into pods
 # secrets added for Helm release management (Helm stores state in secrets)
+# namespaces create added for Helm --create-namespace support
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: app-deploy
 rules:
-# pods and namespaces: read-only (create on pods grants exec, delete on namespaces is destructive)
+# pods: read-only (create on pods grants implicit exec — security boundary)
 - apiGroups: [""]
-  resources: ["pods", "namespaces"]
+  resources: ["pods"]
   verbs: ["get", "list", "watch"]
+# namespaces: read + create (Helm needs create for --create-namespace; delete is destructive — intentionally omitted)
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch", "create"]
 # workload support resources: full CRUD
 - apiGroups: [""]
   resources: ["services", "endpoints", "configmaps", "events",
