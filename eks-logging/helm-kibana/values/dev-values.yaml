@@ -1,5 +1,5 @@
 host: "kibana-ubuntu-dev.312ubuntu.com"
-allowedSourceIP: "174.62.135.239/32"
+allowedSourceIP: "104.3.223.152/32"
 
 ingress:
   enabled: true

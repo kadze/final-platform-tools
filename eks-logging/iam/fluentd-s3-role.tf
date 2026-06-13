@@ -1,5 +1,5 @@
 locals {
-  oidc_issuer = "oidc.eks.us-east-1.amazonaws.com/id/287337B7769634D2DD2BA62AD053165D"
+  oidc_issuer = "oidc.eks.us-east-1.amazonaws.com/id/179BA38F58C87CBEB547703AE6E09E62"
 }
 
 data "aws_caller_identity" "current" {}

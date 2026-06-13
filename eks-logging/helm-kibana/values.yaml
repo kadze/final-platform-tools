@@ -1,7 +1,7 @@
 namespace: logging
 
-image: kibana
-imageTag: "8.13.0"
+image: 383585068161.dkr.ecr.us-east-1.amazonaws.com/kibana
+imageTag: "8.13.0-linux-amd64"
 
 resources:
   requests:
