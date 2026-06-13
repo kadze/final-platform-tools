@@ -34,9 +34,9 @@ jobs:
           role-session-name: GitHubActionsRoleSession
           aws-region: ${{ env.AWS_REGION }}
 
-      # Login to EKS, make sure to switch to the permanent cluster created with terraform once it's up
+      # Login to EKS — target the Terraform-managed cluster (Story 1.5 onwards).
       - name: Login to EKS - update kubeconfig
-        run: aws eks update-kubeconfig --name temporary-eks-cluster-${ENVIRONMENT_STAGE} --region $AWS_REGION
+        run: aws eks update-kubeconfig --name ${{ vars.CLUSTER_NAME }} --region $AWS_REGION
 
       # Add deployment steps for each tool below
       - name: Deploy ingress-nginx controller
@@ -52,8 +52,99 @@ jobs:
         run: |
             echo "Deploy EKS Logging steps go here"
 
+      # ===================== Story 1.5 — cluster services (BEGIN) =====================
+      # cert-manager + external-dns. IRSA role ARNs come from the dev environment vars
+      # (vars.CERT_MANAGER_IAM_ROLE_ARN, vars.EXTERNAL_DNS_IAM_ROLE_ARN); the trust
+      # policies bind to system:serviceaccount:cert-manager:cert-manager and
+      # system:serviceaccount:external-dns:external-dns, so the namespace and SA name
+      # below are load-bearing — do not rename.
+
+      - name: Deploy cert-manager (Story 1.5)
+        # Annotation key is dotted (eks.amazonaws.com/role-arn). Helm --set splits on
+        # '.', so the dots inside the key segment must be backslash-escaped; the
+        # single quotes are just to keep bash from touching the backslashes. Verified
+        # via `helm template` against the vendored chart — the unescaped form
+        # silently renders as a nested-map garbage annotation and IRSA fails with
+        # STS AccessDenied at runtime.
+        run: |
+            helm upgrade --install cert-manager ./cert-manager/chart/cert-manager \
+              --namespace cert-manager --create-namespace \
+              -f cert-manager/values.yaml \
+              --set 'serviceAccount.annotations.eks\.amazonaws\.com/role-arn'=${{ vars.CERT_MANAGER_IAM_ROLE_ARN }} \
+              --wait --timeout 5m
+
+      - name: Wait for cert-manager webhook
+        # The webhook Deployment going Available is necessary but not sufficient —
+        # the apiserver's webhook client cache can still 503 for a few seconds after,
+        # which is why the first ClusterIssuer apply gets a small retry loop below.
+        run: |
+            kubectl wait --for=condition=Available deployment/cert-manager-webhook \
+              -n cert-manager --timeout=180s
+
+      - name: Ensure platform-tools namespace exists
+        # The test Certificate lives in platform-tools. Story 1.3 also creates this
+        # namespace; this branch can't assume 1.3 has been deployed yet, so make it
+        # idempotent here. server-side dry-run | apply is the standard no-op-on-exists
+        # pattern.
+        run: |
+            kubectl create namespace platform-tools --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply cert-manager ClusterIssuers and test certificate
+        # Per file in this order — never `kubectl apply -f cert-manager/manifests/`
+        # because the wildcard Certificate hits LE production and must stay gated.
+        # Staging ClusterIssuer gets a 3x10s retry to ride out the webhook->apiserver
+        # readiness lag described above; prod issuer + test cert apply normally
+        # afterwards because the webhook cache is warm by then.
+        run: |
+            for attempt in 1 2 3; do
+              if kubectl apply -f cert-manager/manifests/clusterissuer-staging.yaml; then
+                break
+              fi
+              echo "ClusterIssuer apply attempt $attempt failed — webhook may still be warming; sleeping 10s"
+              sleep 10
+              if [ "$attempt" = "3" ]; then
+                echo "ClusterIssuer apply failed after 3 attempts"
+                exit 1
+              fi
+            done
+            kubectl apply -f cert-manager/manifests/clusterissuer-prod.yaml
+            kubectl apply -f cert-manager/manifests/certificate-test.yaml
+
+      - name: Validate cert-manager staging test certificate
+        # End-to-end IRSA -> Route53 -> ACME DNS-01 -> Secret. 10m is correct: Route53
+        # change propagation + ACME polling routinely takes several minutes. On
+        # failure, dump diagnostics BEFORE the step exits non-zero so the logs are
+        # useful without a re-run.
+        run: |
+            if ! kubectl wait certificate/cert-manager-test -n platform-tools \
+                --for=condition=Ready --timeout=10m; then
+              echo "::group::cert-manager-test describe"
+              kubectl describe certificate/cert-manager-test -n platform-tools || true
+              echo "::endgroup::"
+              echo "::group::ACME challenges"
+              kubectl get challenges -A -o wide || true
+              echo "::endgroup::"
+              echo "::group::cert-manager controller logs"
+              kubectl logs -n cert-manager deploy/cert-manager --tail=100 || true
+              echo "::endgroup::"
+              exit 1
+            fi
+
+      # PROD GATE — uncomment ONLY after certificate-test goes Ready=True on THIS
+      # cluster. Hits Let's Encrypt production; a misconfig burns the per-domain
+      # rate limit for days.
+      # - name: Apply wildcard certificate (PROD — gated)
+      #   run: kubectl apply -f cert-manager/manifests/certificate-wildcard.yaml
+
+      # external-dns deploy step intentionally omitted for now.
+      # Its values.yaml uses source: gateway-httproute, which requires the Gateway
+      # API CRDs installed by Story 1.3. Add the install step (helm upgrade --install
+      # external-dns ./external-dns/chart/external-dns ... with
+      # --set 'serviceAccount.annotations.eks\.amazonaws\.com/role-arn'=${{ vars.EXTERNAL_DNS_IAM_ROLE_ARN }})
+      # once Story 1.3 has landed those CRDs on the cluster.
+      # ===================== Story 1.5 — cluster services (END) =====================
+
       # Repeat for each additional tool...
-      # Example: Deploy External DNS
       # Example: Setup K8s User Roles
 
       - name: Finalize Deployment
