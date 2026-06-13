@@ -351,7 +351,7 @@ metadata:
 spec:
   externalTrafficPolicy: Local
   ipFamilies:
-  - IPv4
+  - IPv6
   ipFamilyPolicy: SingleStack
   ports:
   - appProtocol: http
