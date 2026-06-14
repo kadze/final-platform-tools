@@ -16,6 +16,9 @@ data:
         team: {{ .Values.externalLabels.team }}
         environment: {{ .Values.externalLabels.environment }}
 
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+
     alerting:
       alertmanagers:
         - static_configs:
@@ -111,3 +114,44 @@ data:
           - source_labels: [__meta_kubernetes_service_name]
             action: replace
             target_label: kubernetes_name
+
+      - job_name: proshop
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - proshop
+        metrics_path: /metrics
+        scrape_interval: 30s
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_label_app]
+            action: keep
+            regex: proshop-backend
+          - source_labels: [__meta_kubernetes_endpoint_port_number]
+            action: keep
+            regex: "5000"
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: service
+          - target_label: app
+            replacement: proshop
+{{ if .Values.scrapeTargets.versus.enabled }}
+      - job_name: versus
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - versus
+        metrics_path: /metrics
+        scrape_interval: 30s
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_label_app]
+            action: keep
+            regex: versus-backend
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: metrics
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: service
+          - target_label: app
+            replacement: versus
+{{ end }}

@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: prometheus
+    team: {{ .Values.team }}
+data:
+  slo-rules.yml: |
+    groups:
+
+      # -----------------------------------------------------------------------
+      # SLO 1 — Proshop order success rate
+      # Target: 99.5% of POST /api/orders return 2xx over 30 days
+      # Error budget: 0.5%
+      # -----------------------------------------------------------------------
+      - name: slo.proshop.orders
+        interval: 30s
+        rules:
+
+          - record: slo:proshop_order_success_rate:ratio_rate5m
+            expr: |
+              sum(rate(http_requests_total{app="proshop", route="/api/orders", status=~"2.."}[5m]))
+              /
+              sum(rate(http_requests_total{app="proshop", route="/api/orders"}[5m]))
+
+          - record: slo:proshop_order_success_rate:ratio_rate30d
+            expr: |
+              sum(rate(http_requests_total{app="proshop", route="/api/orders", status=~"2.."}[30d]))
+              /
+              sum(rate(http_requests_total{app="proshop", route="/api/orders"}[30d]))
+
+          - record: slo:proshop_order_error_budget_remaining:ratio
+            expr: |
+              1 - (
+                (1 - slo:proshop_order_success_rate:ratio_rate30d) / 0.005
+              )
+
+          - alert: ProshopOrderSLOBudget50PercentBurned
+            expr: slo:proshop_order_error_budget_remaining:ratio < 0.5
+            for: 5m
+            labels:
+              severity: warning
+              team: ubuntu
+              slo: proshop-orders
+            annotations:
+              summary: "Proshop order SLO error budget 50% burned"
+              description: "POST /api/orders success rate has consumed 50% of the monthly error budget. Investigate immediately."
+
+          - alert: ProshopOrderSLOBudgetExhausted
+            expr: slo:proshop_order_error_budget_remaining:ratio < 0
+            for: 5m
+            labels:
+              severity: critical
+              team: ubuntu
+              slo: proshop-orders
+            annotations:
+              summary: "Proshop order SLO error budget exhausted"
+              description: "POST /api/orders success rate has breached the 99.5% SLO target. Freeze non-critical deployments and open an incident."
+
+      # -----------------------------------------------------------------------
+      # SLO 2 — Versus category listing latency
+      # Target: p99 of GET /api/v1/categories/ < 800ms, 99% compliance over 30 days
+      # Error budget: 1%
+      # -----------------------------------------------------------------------
+      - name: slo.versus.categories
+        interval: 30s
+        rules:
+
+          - record: slo:versus_categories_p99_latency:histogram_quantile5m
+            expr: |
+              histogram_quantile(0.99,
+                sum by (le) (
+                  rate(django_http_requests_latency_seconds_by_view_method_bucket{
+                    app="versus",
+                    view="CategoryListViewSet"
+                  }[5m])
+                )
+              )
+
+          - record: slo:versus_categories_latency_compliance:ratio_rate30d
+            expr: |
+              sum(rate(django_http_requests_latency_seconds_by_view_method_bucket{
+                app="versus",
+                view="CategoryListViewSet",
+                le="0.8"
+              }[30d]))
+              /
+              sum(rate(django_http_requests_latency_seconds_by_view_method_bucket{
+                app="versus",
+                view="CategoryListViewSet",
+                le="+Inf"
+              }[30d]))
+
+          - alert: VersusCategoriesLatencySLOBreached
+            expr: slo:versus_categories_p99_latency:histogram_quantile5m > 0.8
+            for: 5m
+            labels:
+              severity: warning
+              team: ubuntu
+              slo: versus-categories-latency
+            annotations:
+              summary: "Versus category listing p99 latency above 800ms"
+              description: "p99 latency for GET /api/v1/categories/ is {{`{{ $value | humanizeDuration }}`}}. SLO target is 800ms. Check Django ORM queries and MySQL performance."
