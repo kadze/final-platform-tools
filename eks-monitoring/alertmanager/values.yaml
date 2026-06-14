@@ -28,3 +28,41 @@ alertmanager:
       
   extraArgs:
     cluster.listen-address: ""
+
+  # ---------------------------------------------------------------------------
+  # Native Alertmanager config (becomes alertmanager.yml inside the pod).
+  # This replaces the AlertmanagerConfig CRD that required Prometheus Operator.
+  #
+  # SHARED SEAM — Story 2.3 (alerting & on-call) PRs against THIS block to add:
+  #   - Slack / PagerDuty receivers under `receivers:`
+  #   - Routing rules (matchers, sub-routes) under `route:`
+  #   - Inhibition rules under `inhibit_rules:`
+  #
+  # Use native Alertmanager snake_case keys (group_by, group_wait, slack_configs,
+  # api_url, etc.) — NOT the CRD camelCase equivalents.
+  # ---------------------------------------------------------------------------
+  config:
+    global: {}
+
+    route:
+      # Placeholder receiver — story 2.3 will replace with Slack/PagerDuty
+      receiver: "null"
+      group_by: ["alertname", "namespace"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+
+    receivers:
+      - name: "null"
+      # Story 2.3 adds receivers here, e.g.:
+      # - name: slack-alerts
+      #   slack_configs:
+      #     - api_url: <webhook-url-from-secret>
+      #       channel: "#alerts-ubuntu"
+      #       send_resolved: true
+
+    inhibit_rules: []
+    # Story 2.3 adds inhibition rules here, e.g.:
+    # - source_matchers: [severity="critical"]
+    #   target_matchers: [severity="warning"]
+    #   equal: [alertname, namespace]
