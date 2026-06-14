@@ -57,7 +57,17 @@ jobs:
           version: v3.14.0
 
       # Add deployment steps for each tool below
-
+      # ArgoCD — GitOps controller
+      - name: Deploy ArgoCD
+        run: |
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo update
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd \
+            --create-namespace \
+            -f argocd/values.yaml \
+            --wait \
+            --timeout 5m
       # Example for a tool like Karpenter
       - name: Deploy Karpenter
         run: |
