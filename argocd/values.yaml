@@ -1,14 +1,15 @@
+
 global:
   domain: argocd-ubuntu-dev.312ubuntu.com
-
 configs:
   params:
     server.insecure: true
-
 server:
   ingress:
     enabled: true
-    ingressClassName: nginx
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
     hostname: argocd-ubuntu-dev.312ubuntu.com
-# retrigger after granting cluster access
-# retry after policy propagation
