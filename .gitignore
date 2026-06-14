@@ -28,3 +28,6 @@ override.tf.json
 terraform.rc
 
 .DS_Store
+
+# Helm downloaded dependencies
+charts/
