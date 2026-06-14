@@ -68,11 +68,9 @@ jobs:
         run: |
             echo "Deploy EKS Logging steps go here"
       
-      # EKS Monitoring — Prometheus (deploys first: registers Prometheus Operator CRDs)
+      # EKS Monitoring — Prometheus (raw self-managed: scrape config + rules in ConfigMaps)
       - name: Deploy Prometheus
         run: |
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo update
           helm upgrade --install monitoring eks-monitoring/prometheus \
             --namespace monitoring \
             --create-namespace \
@@ -98,8 +96,6 @@ jobs:
       # EKS Monitoring — Grafana
       - name: Deploy Grafana
         run: |
-          helm repo add grafana https://grafana.github.io/helm-charts
-          helm repo update
           helm upgrade --install grafana eks-monitoring/grafana \
             --namespace monitoring \
             --create-namespace \
