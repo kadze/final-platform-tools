@@ -34,9 +34,8 @@ jobs:
           role-session-name: GitHubActionsRoleSession
           aws-region: ${{ env.AWS_REGION }}
 
-      # Login to EKS, make sure to switch to the permanent cluster created with terraform once it's up
       - name: Login to EKS - update kubeconfig
-        run: aws eks update-kubeconfig --name ubuntu-${ENVIRONMENT_STAGE}-cluster --region $AWS_REGION
+        run: aws eks update-kubeconfig --name eks-kadze-${ENVIRONMENT_STAGE} --region $AWS_REGION
 
       # Add deployment steps for each tool below
       #- name: Deploy ingress-nginx controller
