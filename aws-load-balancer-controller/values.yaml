@@ -2,7 +2,7 @@
 # Installed into kube-system via deploy-platform-tools.yaml
 # IAM role ARN is injected at deploy time via --set from the GHA workflow
 
-clusterName: ubuntu-dev-cluster #TODO-ash
+# clusterName and vpcId are injected at deploy time via --set in the workflow
 region: us-east-1
 
 # Shield, WAF, and WAFv2 endpoints are IPv4-only and unreachable from IPv6-only nodes.
@@ -15,9 +15,6 @@ enableWafv2: false
 image:
   repository: 602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-load-balancer-controller
 
-# vpcId is required for the controller to discover subnets
-# Fill in from Story 1.1 VPC output
-vpcId: vpc-029dc342a8deff9eb #TODO-ash
 
 # Enable Gateway API support (requires Gateway API CRDs installed first)
 # enableGatewayAPI is not a valid key — Gateway API is controlled via featureGates
