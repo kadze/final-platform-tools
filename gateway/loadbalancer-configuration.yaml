@@ -15,11 +15,11 @@ spec:
     team: ubuntu
     component: platform-tools
     environment: dev
-  # Explicit subnet IDs — used to diagnose "Evaluated 0 subnets" from tag selector.
-  # Tag selector (loadBalancerSubnetsSelector) is the intended long-term approach
-  # but returns 0 results in v3.3.0 despite correct tags. Using explicit IDs per
-  # WORKING-WITH-AI.md §7 debugging approach.
-  loadBalancerSubnets:
-    - identifier: subnet-04faf1f7b3f1bc5fb
-    - identifier: subnet-08fa42cb6b9ae49e6
-    - identifier: subnet-08b067221420e0877
+  # Tag-based subnet discovery: selects all subnets tagged kubernetes.io/role/elb=1
+  # (set by Story 1.1 on the 3 public /18 subnets).
+  # Works because Gateway is linked to this LBC via spec.infrastructure.parametersRef —
+  # without that link the controller ignores this CR entirely and falls back to
+  # ResolveViaDiscovery, which picks up the wrong (private/IPv6-only) subnets.
+  loadBalancerSubnetsSelector:
+    kubernetes.io/role/elb:
+      - "1"
