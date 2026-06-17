@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: {{ .Values.namespace }}
+data:
+  # Platform availability SLO — measures HTTP probe success rate against the Gateway.
+  # Story 2.3 will add alert rules and Slack routing on top of these recording rules.
+  slo.yml: |
+    groups:
+      - name: slo.gateway_availability
+        interval: 30s
+        rules:
+          # 5-minute success rate window (fast-burn signal)
+          - record: slo:gateway_http_availability:rate5m
+            expr: |
+              avg_over_time(probe_success{job="blackbox"}[5m])
+
+          # 1-hour success rate (for the dashboard trend line)
+          - record: slo:gateway_http_availability:rate1h
+            expr: |
+              avg_over_time(probe_success{job="blackbox"}[1h])
+
+          # 30-day error budget remaining (1 - burn vs 0.001 target error rate)
+          - record: slo:gateway_http_error_budget_remaining:ratio
+            expr: |
+              1 - (
+                (1 - avg_over_time(probe_success{job="blackbox"}[30d]))
+                / 0.001
+              )
+
+  node_alerts.yml: |
+    groups:
+      - name: node.health
+        rules:
+          - alert: NodeNotReady
+            expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Node {{ $labels.node }} is not Ready"

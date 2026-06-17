@@ -1,0 +1,7 @@
+grafana:
+  hostname: grafana-ubuntu-prod.312ubuntu.com
+  serviceAccountAnnotations: {}
+
+prometheus:
+  retention: 30d
+  storageSize: 50Gi

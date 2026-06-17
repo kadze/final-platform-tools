@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: {{ .Values.namespace }}
+data:
+  # Base config — Story 2.3 layers Slack routing and inhibition rules on top.
+  # Do not add a second Alertmanager; 2.3 extends this one.
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+
+    route:
+      group_by: [alertname, namespace]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: default
+
+    receivers:
+      - name: default

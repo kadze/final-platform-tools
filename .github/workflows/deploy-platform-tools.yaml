@@ -76,6 +76,16 @@ jobs:
         run: |
             echo "Deploy Karpenter steps go here"
 
+      - name: Deploy EKS Monitoring (Prometheus + Grafana + Alertmanager)
+        run: |
+          helm upgrade --install eks-monitoring eks-monitoring/ \
+            --namespace monitoring \
+            --create-namespace \
+            --values eks-monitoring/values.yaml \
+            --values eks-monitoring/values-${ENVIRONMENT_STAGE}.yaml \
+            --set grafana.serviceAccountAnnotations."eks\.amazonaws\.com/role-arn"=${{ vars.GRAFANA_CLOUDWATCH_IAM_ROLE_ARN }} \
+            --wait --timeout 5m
+
       # Example for a tool like EKS Logging
       - name: Deploy EKS Logging
         run: |

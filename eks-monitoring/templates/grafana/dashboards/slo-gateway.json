@@ -1,0 +1,89 @@
+{
+  "title": "SLO — Gateway HTTP Availability",
+  "uid": "slo-gateway",
+  "schemaVersion": 39,
+  "refresh": "1m",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Current Availability (5m window)",
+      "description": "SLI: probe_success rate. Target: 99.9%",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "yellow", "value": 0.995 },
+              { "color": "green", "value": 0.999 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "slo:gateway_http_availability:rate5m",
+        "legendFormat": "availability"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "Error Budget Remaining (30d)",
+      "description": "0% = budget exhausted. Below 0 = SLO breached.",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": -1,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": -1 },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "slo:gateway_http_error_budget_remaining:ratio",
+        "legendFormat": "budget remaining"
+      }]
+    },
+    {
+      "id": 3,
+      "title": "Availability over time (1h rolling)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "lineWidth": 2 }
+        },
+        "overrides": [{
+          "matcher": { "id": "byName", "options": "target" },
+          "properties": [{
+            "id": "custom.lineStyle",
+            "value": { "dash": [8, 4], "fill": "dash" }
+          }]
+        }]
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "slo:gateway_http_availability:rate1h",
+          "legendFormat": "availability 1h"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "0.999",
+          "legendFormat": "target (99.9%)"
+        }
+      ]
+    }
+  ]
+}

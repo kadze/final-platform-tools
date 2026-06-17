@@ -1,0 +1,9 @@
+grafana:
+  hostname: grafana-ubuntu-dev.312ubuntu.com
+  # CloudWatch IRSA role injected at deploy time via --set
+  serviceAccountAnnotations: {}
+
+blackboxExporter:
+  probeTargets:
+    - name: team-gateway
+      url: http://grafana-ubuntu-dev.312ubuntu.com/

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: {{ .Values.namespace }}
+data:
+  cluster-overview.json: |
+{{ .Files.Get "templates/grafana/dashboards/cluster-overview.json" | indent 4 }}
+  slo-gateway.json: |
+{{ .Files.Get "templates/grafana/dashboards/slo-gateway.json" | indent 4 }}

@@ -1,0 +1,64 @@
+namespace: monitoring
+
+prometheus:
+  retention: 7d
+  storageSize: 10Gi
+  storageClass: gp2
+  image: prom/prometheus:v2.53.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+alertmanager:
+  image: prom/alertmanager:v0.27.0
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+grafana:
+  image: grafana/grafana:11.1.0
+  hostname: ""
+  adminSecretName: grafana-admin
+  adminUserKey: admin_user
+  adminPasswordKey: admin_password
+  serviceAccountAnnotations: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+nodeExporter:
+  image: prom/node-exporter:v1.8.1
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+kubeStateMetrics:
+  image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.12.0
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+blackboxExporter:
+  image: prom/blackbox-exporter:v0.25.0
+  probeTargets: []
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi

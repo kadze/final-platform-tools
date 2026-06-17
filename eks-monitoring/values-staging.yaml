@@ -1,0 +1,3 @@
+grafana:
+  hostname: grafana-ubuntu-staging.312ubuntu.com
+  serviceAccountAnnotations: {}
