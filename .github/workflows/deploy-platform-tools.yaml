@@ -76,6 +76,25 @@ jobs:
         run: |
             echo "Deploy Karpenter steps go here"
 
+      - name: Create monitoring namespace and Grafana admin secret
+        # Reads credentials from SSM Parameter Store (source of truth — never committed).
+        # kubectl apply --dry-run | apply pattern is idempotent: safe on every run.
+        run: |
+          kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+          GRAFANA_USER=$(aws ssm get-parameter \
+            --name /eks-kadze-${ENVIRONMENT_STAGE}/grafana/admin_user \
+            --with-decryption --query Parameter.Value --output text)
+          GRAFANA_PASSWORD=$(aws ssm get-parameter \
+            --name /eks-kadze-${ENVIRONMENT_STAGE}/grafana/admin_password \
+            --with-decryption --query Parameter.Value --output text)
+
+          kubectl create secret generic grafana-admin \
+            --namespace monitoring \
+            --from-literal=admin_user="$GRAFANA_USER" \
+            --from-literal=admin_password="$GRAFANA_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy EKS Monitoring (Prometheus + Grafana + Alertmanager)
         run: |
           helm upgrade --install eks-monitoring eks-monitoring/ \
