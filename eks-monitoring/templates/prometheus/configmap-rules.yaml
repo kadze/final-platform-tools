@@ -39,4 +39,4 @@ data:
             labels:
               severity: warning
             annotations:
-              summary: "Node {{ $labels.node }} is not Ready"
+              summary: "Node {{ "{{" }} $labels.node {{ "}}" }} is not Ready"
