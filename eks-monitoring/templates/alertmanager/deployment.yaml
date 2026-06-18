@@ -22,6 +22,9 @@ spec:
           args:
             - --config.file=/etc/alertmanager/alertmanager.yml
             - --storage.path=/alertmanager
+            # Disable cluster gossip — single replica, IPv6-only nodes have no IPv4
+            # binding on 0.0.0.0:9094 which causes a crash without this flag.
+            - --cluster.listen-address=
           ports:
             - containerPort: 9093
           resources:
