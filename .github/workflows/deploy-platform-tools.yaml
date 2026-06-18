@@ -105,6 +105,48 @@ jobs:
             --set grafana.serviceAccountAnnotations."eks\.amazonaws\.com/role-arn"=${{ vars.GRAFANA_CLOUDWATCH_IAM_ROLE_ARN }} \
             --wait --timeout 5m
 
+      - name: Upsert Route53 DNS for Grafana
+        # Waits for the Gateway ALB address (provisioned by LBC after Gateway apply),
+        # then upserts a CNAME in the shevtsov.click hosted zone.
+        # TTL 60 so old records expire quickly after a cluster rebuild.
+        # Story 1.5 (external-dns) will replace this step.
+        run: |
+          echo "Waiting for Gateway ALB address..."
+          for i in $(seq 1 20); do
+            ALB_HOSTNAME=$(kubectl get gateway team-gateway -n platform-tools \
+              -o jsonpath='{.status.addresses[0].value}' 2>/dev/null || true)
+            [ -n "$ALB_HOSTNAME" ] && break
+            echo "  attempt $i/20 — no address yet, sleeping 15s"
+            sleep 15
+          done
+
+          if [ -z "$ALB_HOSTNAME" ]; then
+            echo "ERROR: Gateway never got an ALB address after 5 minutes"
+            exit 1
+          fi
+
+          echo "ALB hostname: $ALB_HOSTNAME"
+
+          HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+            --dns-name shevtsov.click. \
+            --query 'HostedZones[0].Id' --output text | cut -d'/' -f3)
+
+          aws route53 change-resource-record-sets \
+            --hosted-zone-id "$HOSTED_ZONE_ID" \
+            --change-batch "{
+              \"Changes\": [{
+                \"Action\": \"UPSERT\",
+                \"ResourceRecordSet\": {
+                  \"Name\": \"grafana.shevtsov.click\",
+                  \"Type\": \"CNAME\",
+                  \"TTL\": 60,
+                  \"ResourceRecords\": [{\"Value\": \"$ALB_HOSTNAME\"}]
+                }
+              }]
+            }"
+
+          echo "DNS updated: grafana.shevtsov.click -> $ALB_HOSTNAME"
+
       # Example for a tool like EKS Logging
       - name: Deploy EKS Logging
         run: |
