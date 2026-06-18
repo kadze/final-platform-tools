@@ -7,7 +7,7 @@
     {
       "id": 1,
       "title": "Current Availability (5m window)",
-      "description": "SLI: probe_success rate. Target: 99.9%",
+      "description": "SLI: probe_success rate. Target: 99.9% (7-day window). Planned cluster destroys are excluded as maintenance windows.",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "fieldConfig": {
@@ -30,7 +30,7 @@
     },
     {
       "id": 2,
-      "title": "Error Budget Remaining (30d)",
+      "title": "Error Budget Remaining (7d)",
       "description": "0% = budget exhausted. Below 0 = SLO breached.",
       "type": "gauge",
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },

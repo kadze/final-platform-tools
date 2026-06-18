@@ -21,11 +21,13 @@ data:
             expr: |
               avg_over_time(probe_success{job="blackbox"}[1h])
 
-          # 30-day error budget remaining (1 - burn vs 0.001 target error rate)
+          # 7-day error budget remaining (1 - burn vs 0.001 target error rate).
+          # 7d window chosen for dev: cluster is rebuilt daily (planned maintenance),
+          # so a 30d window would always show exhausted budget. In production use 30d.
           - record: slo:gateway_http_error_budget_remaining:ratio
             expr: |
               1 - (
-                (1 - avg_over_time(probe_success{job="blackbox"}[30d]))
+                (1 - avg_over_time(probe_success{job="blackbox"}[7d]))
                 / 0.001
               )
 
