@@ -1,0 +1,90 @@
+name: 'Workflow - Destroy Platform Tools'
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: "us-east-1"
+  ENVIRONMENT_STAGE: "dev"
+
+jobs:
+  destroy-platform-tools:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    environment: dev
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.IAM_ROLE }}
+          role-session-name: GitHubActionsRoleSession
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to EKS - update kubeconfig
+        run: aws eks update-kubeconfig --name eks-kadze-${ENVIRONMENT_STAGE} --region $AWS_REGION
+
+      - name: Delete Route53 DNS for Grafana
+        run: |
+          HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+            --dns-name shevtsov.click. \
+            --query 'HostedZones[0].Id' --output text | cut -d'/' -f3)
+
+          CNAME_VALUE=$(aws route53 list-resource-record-sets \
+            --hosted-zone-id "$HOSTED_ZONE_ID" \
+            --query "ResourceRecordSets[?Name=='grafana.shevtsov.click.'].ResourceRecords[0].Value" \
+            --output text 2>/dev/null || true)
+
+          if [ -n "$CNAME_VALUE" ] && [ "$CNAME_VALUE" != "None" ]; then
+            aws route53 change-resource-record-sets \
+              --hosted-zone-id "$HOSTED_ZONE_ID" \
+              --change-batch "{
+                \"Changes\": [{
+                  \"Action\": \"DELETE\",
+                  \"ResourceRecordSet\": {
+                    \"Name\": \"grafana.shevtsov.click\",
+                    \"Type\": \"CNAME\",
+                    \"TTL\": 60,
+                    \"ResourceRecords\": [{\"Value\": \"$CNAME_VALUE\"}]
+                  }
+                }]
+              }"
+            echo "DNS record deleted: grafana.shevtsov.click"
+          else
+            echo "No DNS record found, skipping"
+          fi
+
+      - name: Delete shared Gateway
+        # Delete Gateway first so LBC reconciles and de-provisions the ALB
+        # before LBC itself is uninstalled in a later step
+        run: |
+          kubectl delete -f gateway/gateway.yaml --ignore-not-found
+          echo "Waiting for ALB to be de-provisioned..."
+          sleep 30
+
+      - name: Uninstall EKS Monitoring (Prometheus + Grafana + Alertmanager)
+        run: |
+          helm uninstall eks-monitoring --namespace monitoring --ignore-not-found || true
+
+      - name: Delete monitoring namespace
+        run: kubectl delete namespace monitoring --ignore-not-found
+
+      - name: Delete LoadBalancerConfiguration and platform-tools namespace
+        run: kubectl delete namespace platform-tools --ignore-not-found
+
+      - name: Delete GatewayClass
+        run: kubectl delete -f gateway/gatewayclass.yaml --ignore-not-found
+
+      - name: Uninstall AWS Load Balancer Controller
+        run: helm uninstall aws-load-balancer-controller --namespace kube-system --ignore-not-found || true
+
+      - name: Delete Gateway API CRDs
+        run: kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standard-install.yaml --ignore-not-found
