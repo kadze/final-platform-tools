@@ -1,0 +1,14 @@
+crds:
+  enabled: true
+
+# Service account is annotated at deploy time with the IRSA role ARN via --set
+serviceAccount:
+  create: true
+  name: cert-manager
+
+# Needed so cert-manager can use the IRSA token
+extraArgs:
+  - --issuer-ambient-credentials
+  # Enable cert-manager's Gateway API integration so it watches Gateway objects
+  # and auto-creates Certificates from the cert-manager.io/cluster-issuer annotation
+  - --enable-gateway-api

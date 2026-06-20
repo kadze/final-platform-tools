@@ -81,6 +81,52 @@ jobs:
         run: |
             echo "Deploy Karpenter steps go here"
 
+      - name: Install cert-manager
+        run: |
+          HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+            --dns-name shevtsov.click. \
+            --query 'HostedZones[0].Id' --output text | cut -d'/' -f3)
+
+          helm repo add jetstack https://charts.jetstack.io
+          helm repo update
+          kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -f -
+          helm upgrade --install cert-manager jetstack/cert-manager \
+            --version v1.20.2 \
+            --namespace cert-manager \
+            --values cert-manager/values.yaml \
+            --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=${{ vars.CERT_MANAGER_IAM_ROLE_ARN }} \
+            --wait
+
+          export HOSTED_ZONE_ID
+          envsubst < cert-manager/cluster-issuer-${ENVIRONMENT_STAGE}.yaml | kubectl apply -f -
+
+      - name: Install external-dns
+        run: |
+          helm repo add external-dns https://kubernetes-sigs.github.io/external-dns/
+          helm repo update
+          kubectl create namespace external-dns --dry-run=client -o yaml | kubectl apply -f -
+          helm upgrade --install external-dns external-dns/external-dns \
+            --version 1.21.1 \
+            --namespace external-dns \
+            --values external-dns/values.yaml \
+            --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=${{ vars.EXTERNAL_DNS_IAM_ROLE_ARN }} \
+            --wait
+
+      - name: Install Secrets Store CSI Driver and AWS Provider
+        run: |
+          helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
+          helm repo add aws-secrets-manager https://aws.github.io/secrets-store-csi-driver-provider-aws
+          helm repo update
+          helm upgrade --install secrets-store-csi-driver secrets-store-csi-driver/secrets-store-csi-driver \
+            --version 1.6.0 \
+            --namespace kube-system \
+            --values secrets-csi/values.yaml \
+            --wait
+          helm upgrade --install secrets-store-csi-driver-provider-aws aws-secrets-manager/secrets-store-csi-driver-provider-aws \
+            --version 3.1.1 \
+            --namespace kube-system \
+            --wait
+
       - name: Create monitoring namespace and Grafana admin secret
         # Reads credentials from SSM Parameter Store (source of truth — never committed).
         # kubectl apply --dry-run | apply pattern is idempotent: safe on every run.
@@ -109,47 +155,8 @@ jobs:
             --set grafana.serviceAccountAnnotations."eks\.amazonaws\.com/role-arn"=${{ vars.GRAFANA_CLOUDWATCH_IAM_ROLE_ARN }} \
             --wait --timeout 5m
 
-      - name: Upsert Route53 DNS for Grafana
-        # Waits for the Gateway ALB address (provisioned by LBC after Gateway apply),
-        # then upserts a CNAME in the shevtsov.click hosted zone.
-        # TTL 60 so old records expire quickly after a cluster rebuild.
-        # Story 1.5 (external-dns) will replace this step.
-        run: |
-          echo "Waiting for Gateway ALB address..."
-          for i in $(seq 1 20); do
-            ALB_HOSTNAME=$(kubectl get gateway team-gateway -n platform-tools \
-              -o jsonpath='{.status.addresses[0].value}' 2>/dev/null || true)
-            [ -n "$ALB_HOSTNAME" ] && break
-            echo "  attempt $i/20 — no address yet, sleeping 15s"
-            sleep 15
-          done
-
-          if [ -z "$ALB_HOSTNAME" ]; then
-            echo "ERROR: Gateway never got an ALB address after 5 minutes"
-            exit 1
-          fi
-
-          echo "ALB hostname: $ALB_HOSTNAME"
-
-          HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
-            --dns-name shevtsov.click. \
-            --query 'HostedZones[0].Id' --output text | cut -d'/' -f3)
-
-          aws route53 change-resource-record-sets \
-            --hosted-zone-id "$HOSTED_ZONE_ID" \
-            --change-batch "{
-              \"Changes\": [{
-                \"Action\": \"UPSERT\",
-                \"ResourceRecordSet\": {
-                  \"Name\": \"grafana.shevtsov.click\",
-                  \"Type\": \"CNAME\",
-                  \"TTL\": 60,
-                  \"ResourceRecords\": [{\"Value\": \"$ALB_HOSTNAME\"}]
-                }
-              }]
-            }"
-
-          echo "DNS updated: grafana.shevtsov.click -> $ALB_HOSTNAME"
+      # DNS for Grafana (and all other HTTPRoutes) is now managed by external-dns.
+      # It watches HTTPRoute objects and upserts CNAME records in shevtsov.click automatically.
 
       # Example for a tool like EKS Logging
       - name: Deploy EKS Logging

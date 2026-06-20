@@ -3,6 +3,9 @@ kind: Gateway
 metadata:
   name: team-gateway
   namespace: platform-tools
+  annotations:
+    # cert-manager sees this + the https listener hostname and auto-creates a Certificate
+    cert-manager.io/cluster-issuer: letsencrypt-dev
 spec:
   gatewayClassName: alb
   # parametersRef links this Gateway to the LoadBalancerConfiguration CR.
@@ -19,6 +22,19 @@ spec:
       port: 80
       protocol: HTTP
       # Allow HTTPRoutes from any namespace to attach to this Gateway
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      port: 443
+      protocol: HTTPS
+      # Wildcard covers all subdomains — cert-manager issues a single *.shevtsov.click cert
+      hostname: "*.shevtsov.click"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: team-gateway-tls
+            namespace: platform-tools
       allowedRoutes:
         namespaces:
           from: All

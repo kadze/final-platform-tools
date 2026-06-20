@@ -1,0 +1,26 @@
+provider:
+  name: aws
+
+# Watch Gateway HTTPRoute objects (1.3's traffic plane)
+sources:
+  - gateway-httproute
+
+# Only manage records in our zone — never touch anything else
+domainFilters:
+  - shevtsov.click
+
+# TXT registry prevents external-dns from deleting records it didn't create
+registry: txt
+txtOwnerId: eks-kadze-dev
+
+# Upsert-only: create and update records, never delete — safer default
+policy: upsert-only
+
+aws:
+  region: us-east-1
+  zoneType: public
+
+# Service account is annotated at deploy time with the IRSA role ARN via --set
+serviceAccount:
+  create: true
+  name: external-dns

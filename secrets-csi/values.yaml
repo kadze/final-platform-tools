@@ -1,0 +1,7 @@
+# Sync mounted secrets to K8s Secret objects so env-var-based apps can consume them
+syncSecret:
+  enabled: true
+
+# Automatically re-fetch secrets when they rotate in Secrets Manager
+enableSecretRotation: true
+rotationPollInterval: 2m
