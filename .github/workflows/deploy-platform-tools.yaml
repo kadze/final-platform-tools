@@ -125,6 +125,7 @@ jobs:
           helm upgrade --install secrets-store-csi-driver-provider-aws aws-secrets-manager/secrets-store-csi-driver-provider-aws \
             --version 3.1.1 \
             --namespace kube-system \
+            --set secrets-store-csi-driver.install=false \
             --wait
 
       - name: Create monitoring namespace and Grafana admin secret
