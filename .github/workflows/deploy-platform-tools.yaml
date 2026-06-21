@@ -112,8 +112,27 @@ jobs:
             --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=${{ vars.EXTERNAL_DNS_IAM_ROLE_ARN }} \
             --wait
 
+      - name: Mirror secrets-store-csi-driver-provider-aws to private ECR
+        # ECR Public resolves to IPv4 addresses unreachable from IPv6-only nodes.
+        # The GHA runner has IPv4 access, so we pull here and push to private ECR
+        # where nodes can authenticate via the node role (AmazonEC2ContainerRegistryReadOnly).
+        run: |
+          PROVIDER_VERSION="3.1.1"
+          PRIVATE_ECR="381492277294.dkr.ecr.us-east-1.amazonaws.com"
+          PRIVATE_REPO="${PRIVATE_ECR}/secrets-store-csi-driver-provider-aws"
+
+          aws ecr create-repository --repository-name secrets-store-csi-driver-provider-aws --region us-east-1 2>/dev/null || true
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin "$PRIVATE_ECR"
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
+
+          docker pull public.ecr.aws/aws-secrets-manager/secrets-store-csi-driver-provider-aws:${PROVIDER_VERSION}
+          docker tag public.ecr.aws/aws-secrets-manager/secrets-store-csi-driver-provider-aws:${PROVIDER_VERSION} ${PRIVATE_REPO}:${PROVIDER_VERSION}
+          docker push ${PRIVATE_REPO}:${PROVIDER_VERSION}
+
       - name: Install Secrets Store CSI Driver and AWS Provider
         run: |
+          PRIVATE_REPO="381492277294.dkr.ecr.us-east-1.amazonaws.com/secrets-store-csi-driver-provider-aws"
+
           helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
           helm repo add aws-secrets-manager https://aws.github.io/secrets-store-csi-driver-provider-aws
           helm repo update
@@ -126,6 +145,7 @@ jobs:
             --version 3.1.1 \
             --namespace kube-system \
             --set secrets-store-csi-driver.install=false \
+            --set image.repository="${PRIVATE_REPO}" \
             --wait
 
       - name: Create monitoring namespace and Grafana admin secret
