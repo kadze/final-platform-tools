@@ -123,7 +123,6 @@ jobs:
 
           aws ecr create-repository --repository-name secrets-store-csi-driver-provider-aws --region us-east-1 2>/dev/null || true
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin "$PRIVATE_ECR"
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
 
           docker pull public.ecr.aws/aws-secrets-manager/secrets-store-csi-driver-provider-aws:${PROVIDER_VERSION}
           docker tag public.ecr.aws/aws-secrets-manager/secrets-store-csi-driver-provider-aws:${PROVIDER_VERSION} ${PRIVATE_REPO}:${PROVIDER_VERSION}
