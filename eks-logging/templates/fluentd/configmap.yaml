@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: {{ .Values.namespace }}
+data:
+  fluent.conf: |
+    # Collect all container logs from the host filesystem.
+    # CRI format (containerd): "<timestamp> <stream> <logtag> <message>"
+    <source>
+      @type tail
+      path /var/log/containers/*.log
+      pos_file /var/log/fluentd-containers.log.pos
+      tag kubernetes.*
+      read_from_head false
+      <parse>
+        @type regexp
+        expression /^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<log>.*)$/
+        time_format %Y-%m-%dT%H:%M:%S.%NZ
+      </parse>
+    </source>
+
+    # Enrich log records with Kubernetes pod/namespace/label metadata.
+    <filter kubernetes.**>
+      @type kubernetes_metadata
+      @log_level warn
+    </filter>
+
+    # Redact secrets before fan-out to Elasticsearch or S3.
+    # Best-effort: catches clear-text secrets in the log line.
+    # Patterns: password=..., token: ..., Authorization: ..., secret=...
+    <filter kubernetes.**>
+      @type record_transformer
+      enable_ruby true
+      <record>
+        log ${record["log"].to_s.gsub(/(?i)(password|token|authorization|secret|api_key)(\s*[:=]\s*)\S+/, '\1\2***')}
+      </record>
+    </filter>
+
+    # Fan out to both Elasticsearch (searchable) and S3 (30-day archive).
+    <match kubernetes.**>
+      @type copy
+
+      # --- Elasticsearch output ---
+      # logstash_format creates daily indices: fluentd-YYYY.MM.DD
+      # The ILM policy (applied by the ilm-job) deletes indices after 7 days.
+      <store>
+        @type elasticsearch
+        host elasticsearch
+        port 9200
+        scheme http
+        user elastic
+        password "#{ENV['ELASTIC_PASSWORD']}"
+        logstash_format true
+        logstash_prefix fluentd
+        include_tag_key true
+        tag_key @log_name
+        <buffer tag,time>
+          @type file
+          path /var/log/fluentd-buffers/es
+          flush_mode interval
+          flush_interval 5s
+          retry_type exponential_backoff
+          retry_forever false
+          retry_max_times 10
+          chunk_limit_size 8m
+        </buffer>
+      </store>
+
+      # --- S3 output ---
+      # Hourly time slices, 10-minute wait for late-arriving records.
+      # Path: logs/<tag>/YYYY/MM/DD/<HH>MM_N.gz
+      # IRSA on the ServiceAccount provides the credentials — no key/secret needed.
+      <store>
+        @type s3
+        s3_bucket "#{ENV['LOG_BUCKET_NAME']}"
+        s3_region "#{ENV['AWS_REGION']}"
+        path logs/${tag}/%Y/%m/%d/
+        s3_object_key_format %{path}%{time_slice}_%{index}.%{file_extension}
+        time_slice_format %H%M
+        store_as gzip
+        <buffer tag,time>
+          @type file
+          path /var/log/fluentd-buffers/s3
+          timekey 3600
+          timekey_wait 10m
+          chunk_limit_size 256m
+          total_limit_size 512m
+        </buffer>
+      </store>
+    </match>

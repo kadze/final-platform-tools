@@ -1,0 +1,7 @@
+kibana:
+  hostname: kibana.shevtsov.click
+
+fluentd:
+  # logBucketName and IRSA annotation injected at deploy time via --set.
+  # AWS_REGION is set as an environment variable in the DaemonSet directly.
+  serviceAccountAnnotations: {}

@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kibana
+  namespace: {{ .Values.namespace }}
+spec:
+  parentRefs:
+    - name: team-gateway
+      namespace: platform-tools
+  hostnames:
+    - {{ .Values.kibana.hostname | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: kibana
+          port: 5601

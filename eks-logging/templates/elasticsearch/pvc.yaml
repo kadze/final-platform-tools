@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elasticsearch-data
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ .Values.elasticsearch.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.elasticsearch.storageSize }}

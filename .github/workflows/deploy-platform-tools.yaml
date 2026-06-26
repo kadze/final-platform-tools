@@ -159,10 +159,35 @@ jobs:
       # DNS for Grafana (and all other HTTPRoutes) is now managed by external-dns.
       # It watches HTTPRoute objects and upserts CNAME records in shevtsov.click automatically.
 
-      # Example for a tool like EKS Logging
-      - name: Deploy EKS Logging
+      - name: Create logging namespace and Elasticsearch credentials secret
+        # Reads the elastic password from SSM Parameter Store (never committed).
+        # kubectl apply --dry-run | apply pattern is idempotent: safe on every run.
         run: |
-            echo "Deploy EKS Logging steps go here"
+          kubectl create namespace logging --dry-run=client -o yaml | kubectl apply -f -
+
+          ELASTIC_PASSWORD=$(aws ssm get-parameter \
+            --name /eks-kadze-${ENVIRONMENT_STAGE}/elasticsearch/password \
+            --with-decryption --query Parameter.Value --output text)
+
+          kubectl create secret generic elasticsearch-credentials \
+            --namespace logging \
+            --from-literal=password="$ELASTIC_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy EKS Logging (Elasticsearch + Fluentd + Kibana)
+        run: |
+          # Derive bucket name with the same formula as modules/fluentd-s3-irsa/locals.tf
+          # so it can never drift from the Terraform side — no GitHub variable needed.
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+          LOG_BUCKET_NAME="kadze-logs-eks-kadze-${ENVIRONMENT_STAGE}-${AWS_ACCOUNT_ID}"
+
+          helm upgrade --install eks-logging eks-logging/ \
+            --namespace logging \
+            --values eks-logging/values.yaml \
+            --values eks-logging/values-${ENVIRONMENT_STAGE}.yaml \
+            --set fluentd.serviceAccountAnnotations."eks\.amazonaws\.com/role-arn"=${{ vars.FLUENTD_S3_IAM_ROLE_ARN }} \
+            --set fluentd.logBucketName="$LOG_BUCKET_NAME" \
+            --wait --timeout 10m
 
       # Repeat for each additional tool...
       # Example: Deploy External DNS

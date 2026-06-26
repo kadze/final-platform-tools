@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: fluentd
+  template:
+    metadata:
+      labels:
+        app: fluentd
+    spec:
+      serviceAccountName: fluentd
+      # Tolerate all taints so Fluentd collects logs from every node including
+      # any tainted system nodes.
+      tolerations:
+        - operator: Exists
+      # Fluentd runs as root to read /var/log/containers on the host.
+      securityContext:
+        runAsUser: 0
+      # Install fluent-plugin-s3 before starting — the base image ships only
+      # the ES8 plugin. The gem install takes ~30s on cold start.
+      containers:
+        - name: fluentd
+          image: {{ .Values.fluentd.image }}
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              gem install fluent-plugin-s3 --no-document 2>&1 | tail -3
+              exec /fluentd/entrypoint.sh
+          env:
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.elasticsearch.secretName }}
+                  key: {{ .Values.elasticsearch.passwordKey }}
+            - name: LOG_BUCKET_NAME
+              value: {{ .Values.fluentd.logBucketName | quote }}
+            - name: AWS_REGION
+              value: us-east-1
+            # Point Fluentd at our mounted config instead of the image default
+            - name: FLUENTD_CONF
+              value: fluent.conf
+          resources:
+            {{- toYaml .Values.fluentd.resources | nindent 12 }}
+          volumeMounts:
+            # Host log directory: container logs + pos_file + buffer files
+            - name: varlog
+              mountPath: /var/log
+            # Our pipeline config
+            - name: config
+              mountPath: /fluentd/etc/fluent.conf
+              subPath: fluent.conf
+              readOnly: true
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: config
+          configMap:
+            name: fluentd-config

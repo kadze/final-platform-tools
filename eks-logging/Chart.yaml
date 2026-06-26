@@ -1,0 +1,6 @@
+apiVersion: v2
+name: eks-logging
+description: Elasticsearch + Fluentd + Kibana (EFK) logging stack for eks-kadze. Story 2.2.
+type: application
+version: 0.1.0
+appVersion: "8.14.0"

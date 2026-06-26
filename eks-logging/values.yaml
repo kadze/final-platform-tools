@@ -1,0 +1,42 @@
+namespace: logging
+
+elasticsearch:
+  image: docker.elastic.co/elasticsearch/elasticsearch:8.14.0
+  storageSize: 20Gi
+  storageClass: gp2
+  javaOpts: "-Xms1g -Xmx1g"
+  retention: 7d
+  # Secret must exist before chart is deployed (created from SSM in the workflow)
+  secretName: elasticsearch-credentials
+  passwordKey: password
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      memory: 2Gi
+
+kibana:
+  image: docker.elastic.co/kibana/kibana:8.14.0
+  # hostname is intentionally empty in the base chart; set per environment
+  hostname: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+fluentd:
+  # Pre-built image with fluent-plugin-elasticsearch for ES8.
+  # fluent-plugin-s3 is installed at pod startup (see daemonset command).
+  image: fluent/fluentd-kubernetes-daemonset:v1.16-debian-elasticsearch8-1
+  # logBucketName and IRSA role ARN are injected at deploy time via --set
+  logBucketName: ""
+  serviceAccountAnnotations: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 200Mi
+    limits:
+      memory: 500Mi
