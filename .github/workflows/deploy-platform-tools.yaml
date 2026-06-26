@@ -187,7 +187,17 @@ jobs:
             --values eks-logging/values-${ENVIRONMENT_STAGE}.yaml \
             --set fluentd.serviceAccountAnnotations."eks\.amazonaws\.com/role-arn"=${{ vars.FLUENTD_S3_IAM_ROLE_ARN }} \
             --set fluentd.logBucketName="$LOG_BUCKET_NAME" \
-            --wait --timeout 10m
+            --wait --timeout 15m
+
+      - name: Debug logging pods on failure
+        if: failure()
+        run: |
+          echo "=== pods ===" && kubectl get pods -n logging -o wide
+          echo "=== events ===" && kubectl get events -n logging --sort-by='.lastTimestamp' | tail -30
+          for pod in $(kubectl get pods -n logging -o name 2>/dev/null); do
+            echo "=== describe $pod ===" && kubectl describe $pod -n logging
+            echo "=== logs $pod ===" && kubectl logs $pod -n logging --tail=50 2>/dev/null || true
+          done
 
       # Repeat for each additional tool...
       # Example: Deploy External DNS
