@@ -75,6 +75,10 @@ spec:
             # Disable telemetry opt-in prompt on first launch
             - name: TELEMETRY_ENABLED
               value: "false"
+            # IPv6-primary cluster: Kibana defaults to 0.0.0.0 (IPv4 only).
+            # Set :: so it binds on IPv6 wildcard, which covers IPv4 too.
+            - name: SERVER_HOST
+              value: "::"
           resources:
             {{- toYaml .Values.kibana.resources | nindent 12 }}
           readinessProbe:
