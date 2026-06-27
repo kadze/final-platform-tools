@@ -5,6 +5,10 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: 1
+  # Recreate: required because the PVC is RWO (only one pod can mount it at
+  # a time) and because memory is tight on a single shared dev node.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: elasticsearch

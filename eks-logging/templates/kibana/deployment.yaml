@@ -5,6 +5,10 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: 1
+  # Recreate: kill old pod before starting new one. Required on a single node
+  # with tight memory — RollingUpdate would block scheduling the replacement.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: kibana
