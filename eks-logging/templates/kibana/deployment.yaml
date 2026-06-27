@@ -18,6 +18,38 @@ spec:
         fsGroup: 1000
         runAsUser: 1000
         runAsNonRoot: true
+      initContainers:
+        # Kibana 8.x forbids connecting as the `elastic` superuser.
+        # This initContainer waits for ES to be ready, then sets the
+        # kibana_system built-in user's password so Kibana's main container
+        # can authenticate. Using the same secret value for both accounts
+        # so no extra SSM parameter is needed.
+        - name: configure-kibana-user
+          image: curlimages/curl:8.7.1
+          securityContext:
+            runAsUser: 1000
+            runAsNonRoot: true
+          env:
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.elasticsearch.secretName }}
+                  key: {{ .Values.elasticsearch.passwordKey }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until curl -fsu "elastic:${ELASTIC_PASSWORD}" \
+                http://elasticsearch:9200/_cluster/health?local=true > /dev/null 2>&1; do
+                echo "Waiting for Elasticsearch..."
+                sleep 5
+              done
+              echo "Setting kibana_system password..."
+              curl -fsSX POST http://elasticsearch:9200/_security/user/kibana_system/_password \
+                -u "elastic:${ELASTIC_PASSWORD}" \
+                -H 'Content-Type: application/json' \
+                -d "{\"password\": \"${ELASTIC_PASSWORD}\"}"
+              echo "kibana_system user configured"
       containers:
         - name: kibana
           image: {{ .Values.kibana.image }}
@@ -26,8 +58,9 @@ spec:
           env:
             - name: ELASTICSEARCH_HOSTS
               value: "http://elasticsearch:9200"
+            # Must use kibana_system, not elastic — ES 8 forbids the superuser here
             - name: ELASTICSEARCH_USERNAME
-              value: elastic
+              value: kibana_system
             - name: ELASTICSEARCH_PASSWORD
               valueFrom:
                 secretKeyRef:
