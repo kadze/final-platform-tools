@@ -55,7 +55,9 @@ data:
         logstash_prefix fluentd
         include_tag_key true
         tag_key @log_name
-        <buffer tag,time>
+        # Buffer by tag only (interval flushing, no time-based chunking).
+        # Using <buffer tag,time> without timekey is a Fluentd config error.
+        <buffer tag>
           @type file
           path /var/log/fluentd-buffers/es
           flush_mode interval
