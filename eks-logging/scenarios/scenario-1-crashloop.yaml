@@ -1,0 +1,43 @@
+---
+# Scenario 1 — CrashLoopBackOff from a bad image tag
+#
+# Deploys a pod that immediately exits with code 1, simulating a broken
+# container image. Kubernetes will put it into CrashLoopBackOff after a
+# few restarts.
+#
+# Deploy:   kubectl apply -f scenario-1-crashloop.yaml
+# Diagnose: /diagnose-logs --service crash-demo --namespace default --since 15m
+# Cleanup:  kubectl delete -f scenario-1-crashloop.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crash-demo
+  namespace: default
+  labels:
+    scenario: "1-crashloop"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crash-demo
+  template:
+    metadata:
+      labels:
+        app: crash-demo
+    spec:
+      containers:
+        - name: crash-demo
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "ERROR: Application failed to initialise — missing required env var DATABASE_URL"
+              echo "ERROR: exit code 1"
+              exit 1
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 32Mi

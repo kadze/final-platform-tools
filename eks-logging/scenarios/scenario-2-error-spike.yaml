@@ -1,0 +1,47 @@
+---
+# Scenario 2 — sustained error-rate spike (config-driven 5xx simulation)
+#
+# Deploys a pod that continuously emits HTTP 500 error log lines to stdout,
+# simulating a misconfigured backend returning server errors.
+# The pod stays running so Fluentd can collect the stream.
+#
+# Deploy:   kubectl apply -f scenario-2-error-spike.yaml
+# Diagnose: /diagnose-logs --service error-spike --namespace default --since 10m
+# Cleanup:  kubectl delete -f scenario-2-error-spike.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: error-spike
+  namespace: default
+  labels:
+    scenario: "2-error-spike"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: error-spike
+  template:
+    metadata:
+      labels:
+        app: error-spike
+    spec:
+      containers:
+        - name: error-spike
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              i=0
+              while true; do
+                i=$((i+1))
+                echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] ERROR: HTTP 500 Internal Server Error POST /api/v1/orders req_id=req-${i} upstream=payment-service latency=3012ms"
+                echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] ERROR: upstream connect error or disconnect/reset before headers. reset reason: connection failure"
+                sleep 2
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 32Mi
