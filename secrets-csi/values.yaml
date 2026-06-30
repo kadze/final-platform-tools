@@ -5,3 +5,8 @@ syncSecret:
 # Automatically re-fetch secrets when they rotate in Secrets Manager
 enableSecretRotation: true
 rotationPollInterval: 2m
+
+# Required for IRSA: kubelet injects an OIDC token (audience sts.amazonaws.com)
+# into the CSI volume setup so the AWS provider can call Secrets Manager as the pod's SA.
+tokenRequests:
+  - audience: sts.amazonaws.com
