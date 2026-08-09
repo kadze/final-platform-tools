@@ -199,6 +199,18 @@ jobs:
             echo "=== logs $pod ===" && kubectl logs $pod -n logging --tail=50 2>/dev/null || true
           done
 
+      - name: Install / upgrade ArgoCD
+        # ArgoCD can't deploy itself, so it stays on the push-deploy path here.
+        # Everything ArgoCD manages after this point lives in the kadze-gitops
+        # repo instead and is reconciled by ArgoCD, not applied by this workflow.
+        run: |
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo update
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd \
+            --create-namespace \
+            --wait --timeout 5m
+
       # Repeat for each additional tool...
       # Example: Deploy External DNS
       # Example: Setup K8s User Roles
