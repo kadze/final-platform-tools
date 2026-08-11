@@ -207,12 +207,19 @@ jobs:
         # ArgoCD can't deploy itself, so it stays on the push-deploy path here.
         # Everything ArgoCD manages after this point lives in the kadze-gitops
         # repo instead and is reconciled by ArgoCD, not applied by this workflow.
+        #
+        # server.insecure=true: argocd-server stops doing its own self-signed
+        # TLS. team-gateway (cert-manager + external-dns, both already live)
+        # terminates TLS instead — one termination point, not two. Everything
+        # this exposes (the HTTPRoute) lives in kadze-gitops, deployed by
+        # ArgoCD itself onto itself — the one deliberately circular case.
         run: |
           helm repo add argo https://argoproj.github.io/argo-helm
           helm repo update
           helm upgrade --install argocd argo/argo-cd \
             --namespace argocd \
             --create-namespace \
+            --set configs.params."server\.insecure"=true \
             --wait --timeout 5m
 
       # Repeat for each additional tool...
